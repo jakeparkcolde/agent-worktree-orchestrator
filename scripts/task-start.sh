@@ -1,7 +1,8 @@
-\
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source-path=SCRIPTDIR
+# shellcheck source=common.sh
 . "$SCRIPT_DIR/common.sh"
 
 [ "$#" -ge 2 ] || die 'usage: task-start.sh <project> <task-name> [agent] [goal]'

@@ -1,8 +1,9 @@
-\
 #!/usr/bin/env bash
 set -u
 
 AWO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Shared configuration consumed by scripts that source this file.
+# shellcheck disable=SC2034
 PROJECTS_FILE="${AWO_PROJECTS_FILE:-${AWO_ROOT}/projects.yaml}"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
