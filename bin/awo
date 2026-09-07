@@ -1,0 +1,48 @@
+\
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+usage() {
+  cat <<'EOF'
+Agent Worktree Orchestrator
+
+Usage:
+  awo doctor
+  awo status <project>
+  awo start <project> <task-name> [agent] [goal]
+  awo finish [repo-path]
+  awo cleanup <project> [--apply]
+  awo help
+EOF
+}
+
+cmd="${1:-help}"
+case "$cmd" in
+  doctor)
+    exec "$ROOT/scripts/doctor.sh"
+    ;;
+  status)
+    shift
+    exec "$ROOT/scripts/repo-status.sh" "$@"
+    ;;
+  start)
+    shift
+    exec "$ROOT/scripts/task-start.sh" "$@"
+    ;;
+  finish)
+    shift
+    exec "$ROOT/scripts/task-finish.sh" "$@"
+    ;;
+  cleanup)
+    shift
+    exec "$ROOT/scripts/cleanup.sh" "$@"
+    ;;
+  help|-h|--help)
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac

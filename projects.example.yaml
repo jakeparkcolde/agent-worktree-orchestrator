@@ -1,0 +1,28 @@
+\
+# Copy this file to projects.yaml and edit absolute repository paths.
+#
+# merge_policy:
+#   manual = human approval before merge
+#   review = PR/review expected
+#   auto   = external orchestrator may auto-merge LOW-risk work after validation
+
+projects:
+  example-app:
+    path: "/absolute/path/to/example-app"
+    base_ref: "origin/main"
+    max_worktrees: 3
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: "npm test"
+    lint_command: "npm run lint"
+    typecheck_command: "npm run typecheck"
+
+  example-service:
+    path: "/absolute/path/to/example-service"
+    base_ref: "origin/main"
+    max_worktrees: 2
+    default_agent: "claude"
+    merge_policy: "review"
+    test_command: "pytest"
+    lint_command: "ruff check ."
+    typecheck_command: ""

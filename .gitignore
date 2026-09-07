@@ -1,0 +1,5 @@
+projects.yaml
+.env
+.DS_Store
+logs/*
+!logs/.gitkeep
