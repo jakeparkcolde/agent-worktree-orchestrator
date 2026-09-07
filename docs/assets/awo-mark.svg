@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Worktree Orchestrator</title>
+  <desc id="desc">A shared Git base branches into two independent task worktrees.</desc>
+  <rect width="128" height="128" rx="28" fill="#142738"/>
+  <path d="M64 98V70M64 70C64 54 32 62 32 42V30M64 70C64 54 96 62 96 42V30" fill="none" stroke="#78DCC5" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="64" cy="98" r="10" fill="#F7FAFC"/>
+  <rect x="20" y="18" width="24" height="24" rx="6" fill="#78DCC5"/>
+  <rect x="84" y="18" width="24" height="24" rx="6" fill="#78DCC5"/>
+</svg>
