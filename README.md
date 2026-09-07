@@ -1,91 +1,53 @@
-\
+<p align="center">
+  <img src="docs/assets/awo-mark.svg" width="88" height="88" alt="AWO branching worktree logo">
+</p>
+
 # Agent Worktree Orchestrator
 
-> Experimental control plane for AI coding agents using Git worktrees, Orca, Codex, and Claude.
+**One goal. One worktree. A clearer path from task to cleanup.**
 
-Agent Worktree Orchestrator (AWO) is a small, opinionated toolkit for people who run multiple AI coding agents across multiple repositories and do not want branch/worktree cleanup to become a second job.
+A small CLI and operating contract for managing AI coding work across Git repositories with Orca, Codex, and Claude. Inspect worktrees, start independent tasks from a configured base, and preview cleanup before removing merged work.
 
-Instead of treating every prompt as a new branch, AWO treats a worktree as a **short-lived execution environment for one goal**.
+[![CI](https://github.com/jakeparkcolde/agent-worktree-orchestrator/actions/workflows/ci.yml/badge.svg)](https://github.com/jakeparkcolde/agent-worktree-orchestrator/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/jakeparkcolde/agent-worktree-orchestrator/releases/tag/v0.1.0)
+[![Status](https://img.shields.io/badge/status-experimental-orange)](#status)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+**English** · [한국어](README.ko.md)
+
+[Quick Start](#quick-start) · [Why](#why) · [Safety](#safety) · [Usage guide](docs/usage.md)
 
 ## Why
 
-Parallel AI coding is easy to start and surprisingly hard to operate.
+Parallel coding creates more than code: branches drift, worktrees accumulate, and agents can collide on shared files. AWO gives the human or supervising agent a repeatable workflow and a shared project registry.
 
-Typical failure modes:
+- **Keep work tied to a goal.** The operating contract calls for reusing a worktree when continuing the same task.
+- **Start independent work deliberately.** The CLI sets the configured base ref, uses Orca `--no-parent`, and checks the worktree limit.
+- **Make Git state visible.** Status and finish commands report the state you need to review before merging.
+- **Preserve unfinished work.** Cleanup defaults to a preview and checks Git state before removal.
 
-- too many long-lived worktrees
-- feature branches drifting far behind `main`
-- agents editing the same shared files in parallel
-- merged worktrees never being removed
-- unpushed commits being deleted accidentally
-- humans spending more time managing Git than giving product direction
+## Use cases
 
-AWO adds a lightweight orchestration layer:
+| Situation | How AWO helps |
+| --- | --- |
+| You work across several repositories | Store paths, base refs, and workflow preferences in `projects.yaml`. |
+| You start an independent fix or feature | Create an Orca worktree and launch a Codex or Claude task. |
+| You return to an existing goal | Inspect status, then reuse the worktree under the operating contract. |
+| You have finished and merged a task | Preview cleanup; apply it only to eligible worktrees. |
 
-```text
-Human
-  │
-  │ Goal
-  ▼
-Orchestrator repo
-  │
-  ├─ AGENTS.md
-  ├─ projects.yaml
-  ├─ Git safety policy
-  └─ git-orchestrator skill
-  │
-  ▼
-Orca
-  │
-  ├─ isolated worktree
-  ├─ Codex / Claude
-  ├─ tests / review
-  └─ PR
-  │
-  ▼
-merge → safe cleanup
-```
+## Quick Start
 
-## Core ideas
+Requires **macOS or Linux, Git, Bash, and Python 3**. Task creation also requires the **Orca CLI** and the **Codex or Claude CLI** you intend to launch. The target repository must already exist locally with an accessible `origin` remote and base ref.
 
-1. **One worktree = one goal**
-2. **Independent work starts from the repo base ref**
-3. **Use top-level Orca worktrees for independent tasks**
-4. **Prefer reusing an existing worktree over creating another**
-5. **Keep active worktrees small in number and short in lifetime**
-6. **Never auto-delete dirty or uniquely committed work**
-7. **Risky changes require human approval**
-8. **`AGENTS.md` describes the workspace contract; the task prompt describes the goal**
-
-## Status
-
-`v0.1.0` — experimental.
-
-Use it on repositories you can restore from remote backups. Start with `merge_policy: manual`.
-
-## Requirements
-
-- macOS or Linux
-- Git
-- Bash
-- Python 3
-- Orca CLI for Orca task creation
-- Codex and/or Claude CLI if you want Orca to launch those agents
-
-## Quick start
+### 1. Clone and configure
 
 ```bash
-git clone https://github.com/Jakecolde/agent-worktree-orchestrator.git
+git clone https://github.com/jakeparkcolde/agent-worktree-orchestrator.git
 cd agent-worktree-orchestrator
-
 cp projects.example.yaml projects.yaml
-$EDITOR projects.yaml
-
-chmod +x bin/awo scripts/*.sh
-./bin/awo doctor
 ```
 
-Example project:
+Edit `projects.yaml` with your editor. Keep the example's simple indentation and replace the project entry with your repository details:
 
 ```yaml
 projects:
@@ -100,131 +62,102 @@ projects:
     typecheck_command: "npm run typecheck"
 ```
 
-Check status:
+Use validation commands appropriate to your project. They are guidance for the supervising agent; `finish` does not run them. `max_worktrees` includes the primary checkout, so `3` allows up to two additional worktrees.
+
+### 2. Check the environment and current work
 
 ```bash
+./bin/awo doctor
 ./bin/awo status myapp
 ```
 
-Start an independent task:
+`doctor` checks tool availability and the configuration file's presence. Review existing work before starting: reuse an existing worktree for the same goal and coordinate overlapping file edits.
+
+### 3. Start an independent task
 
 ```bash
 ./bin/awo start myapp fix-login codex \
   "Fix the intermittent login failure and add regression tests."
 ```
 
-Check a worktree before PR/merge:
+This fetches `origin`, checks the primary checkout for an in-progress Git operation, verifies the base and worktree count, registers the repository with Orca if needed, and creates the task. `--no-parent` controls Orca lineage; the base ref is configured separately by AWO.
+
+### 4. Validate and review
+
+Run your project's tests, lint, and type checks in the task worktree, review the diff, and commit the intended changes. Then run:
 
 ```bash
-/path/to/agent-worktree-orchestrator/bin/awo finish
+./bin/awo finish /absolute/path/to/task-worktree
 ```
 
-Preview cleanup:
+`finish` reports ahead/behind counts, changed files, filename-based risk candidates, and upstream status. It compares against `origin/HEAD`, falling back to `origin/main`; it currently does not read the project's `base_ref`. Review against your configured base separately if it differs. Follow your merge policy to open a PR or merge.
+
+### 5. Preview cleanup after merging
 
 ```bash
 ./bin/awo cleanup myapp
 ```
 
-Apply only safe cleanup candidates:
+After reviewing the preview, apply cleanup with:
 
 ```bash
 ./bin/awo cleanup myapp --apply
 ```
 
-## Safety model
+## Architecture
 
-Cleanup is **dry-run by default**.
-
-AWO does not automatically run these destructive commands:
-
-```bash
-orca worktree rm --force
-git branch -D
-git reset --hard
-git clean -fd
-git push --force
+```mermaid
+flowchart TD
+    H[Human goal] --> O[Human or supervising agent]
+    C[AGENTS.md + projects.yaml + operating skill] --> O
+    O --> A[AWO CLI: status and start]
+    A --> R[Orca: configured base + no-parent]
+    R --> W[Task worktree: Codex or Claude]
+    W --> V[Run project checks + awo finish]
+    V --> M[Human or external workflow: review and merge]
+    M --> P[awo cleanup: preview]
+    P --> G{Apply requested and Git checks pass?}
+    G -->|Yes| D[Remove eligible worktree without force]
+    G -->|No| K[Keep worktree]
 ```
 
-A cleanup candidate must be:
+AWO supplies scripts and policy. The human or supervising agent coordinates goals, validation, approval, and merging; Orca runs the worktree task. See [architecture](docs/architecture.md) and [Orca integration](docs/orca-integration.md).
 
-- clean
-- free of unpushed commits
-- free of commits unique relative to the configured base
-- fully contained in the configured base
+## Safety
 
-Even with `--apply`, Git's non-force safety checks remain in place.
+> If safety cannot be proven from Git state, preserve the work.
 
-See [`docs/safety-model.md`](docs/safety-model.md).
+Cleanup is **dry-run by default**. A removable worktree must be outside the primary checkout, clean, have no commits unique to the configured base, and have its HEAD contained in that base. If an upstream exists, it must also have no unpushed commits relative to it. `--apply` uses non-force worktree removal and `git branch -d`; a branch is preserved if deletion fails.
 
-## Merge policies
+The operating contract prohibits automatically using `orca worktree rm --force`, `git branch -D`, `git reset --hard`, `git clean -fd`, or `git push --force`.
 
-| Policy | Meaning |
+Human approval is required for schema/migrations, authentication/authorization, billing/payments, production infrastructure, secrets, destructive data operations, permissions, breaking external APIs, and major architecture changes. Filename-based risk hints are not a complete risk assessment.
+
+| Merge policy | Responsibility |
 | --- | --- |
-| `manual` | Prepare and validate; human decides merge |
-| `review` | PR/review workflow expected |
-| `auto` | Low-risk changes may be auto-merged by an external orchestrator after tests/CI |
+| `manual` | A human decides whether to merge. Start here. |
+| `review` | The supervising workflow follows PR review. |
+| `auto` | An external orchestrator may merge low-risk work after validation. |
 
-AWO itself does **not** blindly merge pull requests. It provides the policy and preflight layer for an AI orchestrator.
+These policies guide the supervising workflow; the CLI does not enforce approval or merge PRs. Read the [safety model](docs/safety-model.md) and [workspace contract](AGENTS.md).
 
-High-risk changes always require explicit approval:
+## Status
 
-- database schema / migrations
-- authentication / authorization
-- billing / payments
-- production infrastructure
-- secrets / credentials
-- destructive data operations
-- permission model changes
-- breaking external API changes
+**v0.1.0 · Experimental.** Start with `merge_policy: "manual"` on repositories recoverable from remote backups.
 
-## Project structure
+Available today: dependency checks, repository/worktree status, Orca task creation, a Git finish report, and cleanup preview/application. Automatic same-goal reuse, overlap detection, configured test execution, PR creation, and merging are not implemented by the CLI. The operating contract assigns those decisions and actions to the human or supervising agent.
 
-```text
-.
-├── AGENTS.md
-├── README.md
-├── README.ko.md
-├── projects.example.yaml
-├── bin/
-│   └── awo
-├── scripts/
-│   ├── common.sh
-│   ├── doctor.sh
-│   ├── project-value.sh
-│   ├── repo-status.sh
-│   ├── task-start.sh
-│   ├── task-finish.sh
-│   └── cleanup.sh
-├── skills/
-│   └── git-orchestrator/
-│       └── SKILL.md
-├── docs/
-├── examples/
-└── .github/
-```
+See the [roadmap](docs/open-source-roadmap.md) and [changelog](CHANGELOG.md).
 
-## Orca model
+## Documentation and contributing
 
-Orca is worktree-native: each task can have its own Git worktree, branch, terminals, and agent session. For independent work, Orca documents `--no-parent`; it controls Orca lineage, not the Git base. Set the repository base ref separately and keep independent tasks based on it.
+- [Usage guide](docs/usage.md) — command details
+- [Operating skill](skills/git-orchestrator/SKILL.md) — guidance for supervising agents
+- [Contributing](CONTRIBUTING.md) — small, auditable changes welcome
+- [Security policy](SECURITY.md) — reporting security issues
 
-References:
-
-- Orca CLI reference: https://www.onorca.dev/docs/cli/reference
-- Orca worktree model: https://www.onorca.dev/docs/model/worktrees
-- Orca CLI skill guide: https://github.com/stablyai/orca/blob/main/skill-guides/orca-cli.md
-- OpenAI Codex repository: https://github.com/openai/codex
-- OpenAI Codex workflow cookbook: https://github.com/openai/openai-cookbook/blob/main/examples/codex/iterating-development-workflows-with-codex.md
-
-## Codex and `AGENTS.md`
-
-Codex recognizes `AGENTS.md` as repository guidance and applies more specific nested instructions as it works deeper in a repository. AWO uses the root `AGENTS.md` as an operating contract and keeps task-specific intent in the goal/prompt.
-
-## Contributing
-
-See [`CONTRIBUTING.md`](CONTRIBUTING.md).
-
-Small, auditable changes are preferred. Safety changes should include a regression test when possible.
+Safety changes should include a regression test when possible.
 
 ## License
 
-MIT
+[MIT](LICENSE)
