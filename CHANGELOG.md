@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Separate coordinator dispatch from independent Orca worker execution.
+- Require explicit goal delivery and report creation/session/turn evidence
+  separately; preserve worktrees when dispatch is incomplete.
+- Document exact-path reuse and prohibit coordinator implementation fallback.
+
 ## 0.2.0 — 2026-09-08
 
 - Add worktree audit evidence and conservative discovery/activity protection.

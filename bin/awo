@@ -9,7 +9,7 @@ Agent Worktree Orchestrator
 Usage:
   awo doctor
   awo status <project>
-  awo start <project> <task-name> [agent] [goal]
+  awo start <project> <task-name> [agent] [goal] [--worktree PATH] [--new-session]
   awo finish [repo-path]
   awo audit <project> [--json]
   awo watch <project> [--json] [--notify] [--sessions]

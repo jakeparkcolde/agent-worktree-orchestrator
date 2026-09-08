@@ -24,6 +24,28 @@ The user's goal is product work. Git/worktree lifecycle management should be han
 9. Before creating a new worktree, inspect existing worktrees for overlap and cleanup candidates.
 10. Do not auto-delete dirty, unpushed, unique, or unmerged work.
 
+## Coordinator and worker separation
+
+The primary checkout (for example `agents/main`) is the dispatcher's coordination
+context. Keep it available for assigning independent work and collecting results.
+Implementation belongs to a separate Orca agent terminal bound to the exact
+selected worktree. Creating a Git worktree alone does not complete a handoff.
+
+- Resolve a concrete project and goal; reuse an existing worktree for the same goal.
+- Deliver the goal explicitly to the separate worker; verify the selected path.
+- Unknown terminal metadata does not prove an idle shell. Use `--new-session`
+  with exact-path reuse only when the user has established that no worker is
+  there; never bypass a positively identified agent or incomplete listing.
+- Report worktree creation, session readiness and turn start as separate states.
+- Claim a running task only when worker execution evidence supports it.
+- If dispatch fails, preserve the worktree and report the incomplete stage.
+- Never change the coordinator's directory into the worktree and implement the
+  task there as an automatic fallback. Repair or retry the independent dispatch.
+- Coordinate overlapping files before parallel dispatch; no speculative workers.
+
+This is an operating contract. It does not imply automatic natural-language
+project matching or background monitoring by the CLI.
+
 ## Start workflow
 
 Before work:

@@ -82,7 +82,19 @@ Use validation commands appropriate to your project. They are guidance for the s
   "Fix the intermittent login failure and add regression tests."
 ```
 
-This fetches `origin`, checks the primary checkout for an in-progress Git operation, verifies the base and worktree count, registers the repository with Orca if needed, and creates the task. `--no-parent` controls Orca lineage; the base ref is configured separately by AWO.
+This checks the configured base and worktree count, then requests an independent Orca worker with the explicit goal. `--no-parent` controls Orca lineage; the configured base selects the Git starting point. Inspect the dispatch receipt before claiming the worker is ready or running.
+
+The primary checkout remains the coordinator's dispatch context, available for
+other task assignments. Implementation belongs to a separate Orca worker
+terminal bound to the exact task worktree, with the goal explicitly delivered.
+Treat **worktree created**, **session ready**, and **turn started** as separate
+facts. If dispatch stops partway, preserve the worktree and repair the handoff;
+the coordinator must not enter it and implement as an automatic fallback.
+See [Orca dispatch](docs/orca-integration.md) for evidence and reuse details.
+An existing worktree with no terminals receives a separate Codex/Claude worker.
+Unknown existing terminals block dispatch by default. If you know they are only
+shells with no worker, explicitly add `--new-session` alongside `--worktree PATH`;
+a positively identified agent still blocks duplication.
 
 ### 4. Validate and review
 

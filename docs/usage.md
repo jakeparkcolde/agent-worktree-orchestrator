@@ -27,6 +27,42 @@ new-worktree protection. Orca detection is a path-based inference.
 Reuse an existing worktree when continuing the same goal. `start` still uses
 the existing Orca integration; AWO does not automatically detect matching goals.
 
+## Independent worker dispatch and reuse
+
+Keep the coordinator in its primary checkout context. Implementation must run
+in a separate Orca worker terminal for the selected worktree; creating a folder
+does not by itself start a task. Supply a concrete goal as shown above.
+
+To select an existing same-goal worktree:
+
+```bash
+./bin/awo start myapp fix-login codex "Continue the login regression fix." \
+  --worktree /absolute/path/to/task-worktree
+```
+
+Reuse preserves the branch and edits. With no terminals, AWO creates the
+selected Codex/Claude worker. Public terminal metadata cannot prove that an
+unknown terminal is an idle shell, so existing unknown terminals block dispatch
+by default. If you know no worker is running there, explicitly acknowledge that
+with `--new-session`:
+
+```bash
+./bin/awo start myapp fix-login codex "Continue the login regression fix." \
+  --worktree /absolute/path/to/task-worktree --new-session
+```
+
+`--new-session` requires `--worktree`; it permits an additional terminal only
+when no agent is positively identified. A detected agent or a truncated terminal
+listing still blocks dispatch. Existing sessions receive no prompt and are not
+stopped or changed. Do not use this acknowledgment without knowing their role.
+
+The JSON `awo_dispatch` receipt distinguishes verified session identity from
+execution progress. `session_confirmed` and `idle` exit 0; `unverified` and
+`existing_terminal` exit 3.
+A ready session does not establish that a task turn has started. If verification is incomplete, preserve the worktree and inspect Orca
+before retrying. Never move the coordinator into that directory and implement
+as an automatic fallback. AWO does not monitor progress in the background.
+
 ## Finish
 
 ```bash

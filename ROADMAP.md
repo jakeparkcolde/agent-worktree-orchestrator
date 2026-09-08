@@ -80,3 +80,16 @@ and alias support are planned; the current CLI does not implement them.
 
 Do not create speculative worktrees merely because a repository was mentioned.
 The CLI still requires a task name and goal supplied by the supervising workflow.
+
+## Coordinator and worker dispatch contract
+
+The primary checkout remains available to the coordinator for parallel task
+allocation. Implementation runs in a separate Orca terminal bound to the exact
+worktree, with an explicitly delivered goal. Creation, session readiness and
+turn start are distinct facts; a created directory is not a running worker.
+
+If worker dispatch fails, preserve the worktree and repair the handoff. Do not
+move the coordinator into the worktree and silently perform implementation.
+Existing-goal reuse must preserve its checkout and use exact-path selection.
+This contract does not implement natural-language routing, automatic goal
+matching or ongoing background monitoring.
