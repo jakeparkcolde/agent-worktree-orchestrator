@@ -3,3 +3,5 @@ projects.yaml
 .DS_Store
 logs/*
 !logs/.gitkeep
+
+*.py[cod]

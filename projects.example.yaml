@@ -1,4 +1,3 @@
-\
 # Copy this file to projects.yaml and edit absolute repository paths.
 #
 # merge_policy:
@@ -11,6 +10,10 @@ projects:
     path: "/absolute/path/to/example-app"
     base_ref: "origin/main"
     max_worktrees: 3
+    # Flat v0.2 fields; protection cannot be lowered below 24/72 hours.
+    active_hours: 24
+    recent_hours: 72
+    stale_hours: 168
     default_agent: "codex"
     merge_policy: "manual"
     test_command: "npm test"

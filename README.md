@@ -9,7 +9,7 @@
 A small CLI and operating contract for managing AI coding work across Git repositories with Orca, Codex, and Claude. Inspect worktrees, start independent tasks from a configured base, and preview cleanup before removing merged work.
 
 [![CI](https://github.com/jakeparkcolde/agent-worktree-orchestrator/actions/workflows/ci.yml/badge.svg)](https://github.com/jakeparkcolde/agent-worktree-orchestrator/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/jakeparkcolde/agent-worktree-orchestrator/releases/tag/v0.1.0)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/jakeparkcolde/agent-worktree-orchestrator/blob/main/CHANGELOG.md)
 [![Status](https://img.shields.io/badge/status-experimental-orange)](#status)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -69,6 +69,8 @@ Use validation commands appropriate to your project. They are guidance for the s
 ```bash
 ./bin/awo doctor
 ./bin/awo status myapp
+./bin/awo audit myapp
+./bin/awo watch myapp
 ```
 
 `doctor` checks tool availability and the configuration file's presence. Review existing work before starting: reuse an existing worktree for the same goal and coordinate overlapping file edits.
@@ -101,7 +103,7 @@ Run your project's tests, lint, and type checks in the task worktree, review the
 After reviewing the preview, apply cleanup with:
 
 ```bash
-./bin/awo cleanup myapp --apply
+./bin/awo cleanup myapp --worktree /absolute/path/to/task-worktree --apply
 ```
 
 ## Architecture
@@ -127,7 +129,17 @@ AWO supplies scripts and policy. The human or supervising agent coordinates goal
 
 > If safety cannot be proven from Git state, preserve the work.
 
-Cleanup is **dry-run by default**. A removable worktree must be outside the primary checkout, clean, have no commits unique to the configured base, and have its HEAD contained in that base. If an upstream exists, it must also have no unpushed commits relative to it. `--apply` uses non-force worktree removal and `git branch -d`; a branch is preserved if deletion fails.
+Cleanup is **dry-run by default**. Applying it requires `--worktree <exact-path>`
+or explicit `--all-safe`. New and recently active worktrees remain protected,
+even with zero unique commits. AWO compares topology, patch equivalence and
+final tree differences separately; a nonzero final diff prevents removal.
+Dirty state, artifacts, tracked runtime and incomplete evidence block cleanup.
+Removal uses Git without force and preserves branches.
+
+Unknown creation time is treated conservatively: protection starts when AWO
+first discovers the worktree. Defaults are 24 hours ACTIVE and 72 hours
+ACTIVE_IDLE for a clean checkout. Inspection does not certify semantic
+identity or verified archival. See the [v0.2 roadmap](ROADMAP.md) for limits.
 
 The operating contract prohibits automatically using `orca worktree rm --force`, `git branch -D`, `git reset --hard`, `git clean -fd`, or `git push --force`.
 
@@ -143,11 +155,16 @@ These policies guide the supervising workflow; the CLI does not enforce approval
 
 ## Status
 
-**v0.1.0 · Experimental.** Start with `merge_policy: "manual"` on repositories recoverable from remote backups.
+**v0.2.0 · Experimental.** Start with `merge_policy: "manual"` on repositories recoverable from remote backups.
 
-Available today: dependency checks, repository/worktree status, Orca task creation, a Git finish report, and cleanup preview/application. Automatic same-goal reuse, overlap detection, configured test execution, PR creation, and merging are not implemented by the CLI. The operating contract assigns those decisions and actions to the human or supervising agent.
+The v0.2 audit adds content evidence and discovery metadata to worktree
+inspection. Watch alerts use 24/72/168-hour thresholds and the project worktree
+limit. Optional macOS notifications and launchd scripts support periodic checks.
+Verified archival and automatic semantic-equivalence certification are deferred.
+Automatic same-goal reuse, overlap detection, configured test execution, PR
+creation and merging remain duties of the human or supervising agent.
 
-See the [roadmap](docs/open-source-roadmap.md) and [changelog](CHANGELOG.md).
+See the [v0.2 roadmap](ROADMAP.md) and [changelog](CHANGELOG.md).
 
 ## Documentation and contributing
 

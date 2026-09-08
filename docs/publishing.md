@@ -1,41 +1,19 @@
 # Publishing to GitHub
 
-The ChatGPT GitHub connector can edit existing repositories but may not expose repository creation.
+The existing upstream is `jakeparkcolde/agent-worktree-orchestrator`.
+For an update, review the existing remote and publish only intended source
+changes after tests and `git diff --check` pass.
 
-This repository includes a one-command local publisher using GitHub CLI.
+The original `scripts/publish-github.sh` is a bootstrap helper for initial
+repository publication. Inspect its defaults before use; it is not the v0.2
+release workflow. Do not run it blindly against an existing repository.
 
-## Publish
+A version bump does not create a release. Review existing release practice and
+platform verification before tagging v0.2.0. In particular, launchd and desktop
+notification integration need validation on macOS; parsing tests alone do not
+prove operating-system integration. If verification is incomplete, push the
+source commit and document the remaining work without creating a release.
 
-```bash
-./scripts/publish-github.sh
-```
-
-Default target:
-
-```text
-Jakecolde/agent-worktree-orchestrator
-```
-
-The script:
-
-1. checks `gh` authentication
-2. initializes Git if needed
-3. creates the initial commit
-4. creates the public GitHub repository when absent
-5. pushes `main`
-6. creates GitHub Release `v0.1.0`
-
-## Override target
-
-```bash
-GITHUB_OWNER=yourname \
-GITHUB_REPO=your-repo \
-./scripts/publish-github.sh
-```
-
-## Prerequisites
-
-```bash
-brew install gh
-gh auth login
-```
+Never include project registry paths, local observation state, archived
+artifacts, runtime logs, credentials or process command arguments in commits
+or release assets. Review staged paths and use an explicit source-file list.

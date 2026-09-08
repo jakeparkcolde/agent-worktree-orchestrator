@@ -1,68 +1,107 @@
-\
 # Usage
 
-## Register projects
+## Configuration
 
-```bash
-cp projects.example.yaml projects.yaml
-```
+Copy `projects.example.yaml` to `projects.yaml` and use absolute repository
+paths. `AWO_PROJECTS_FILE` selects a different registry. Existing flat v0.1
+entries remain valid. Optional flat fields are `active_hours: 24`,
+`recent_hours: 72`, and `stale_hours: 168`; protection cannot be reduced below
+24/72 hours. `max_worktrees` includes the primary checkout.
 
-Use absolute paths.
-
-## Inspect
+## Inspect and start
 
 ```bash
 ./bin/awo doctor
 ./bin/awo status myapp
-```
-
-## Start work
-
-```bash
+./bin/awo audit myapp
+./bin/awo audit myapp --json
 ./bin/awo start myapp task-name codex "Goal..."
 ```
 
-## Continue work
+Audit reports topology, patch and final-tree evidence separately. Discovery
+records local metadata in the Git common directory, including worktrees created
+outside AWO. Audit/watch use existing local refs and do not fetch; cleanup
+application fetches `origin` before assessing removal. Unknown age starts at first observation. Old commits do not bypass
+new-worktree protection. Orca detection is a path-based inference.
 
-If the same Goal already has a worktree, the AI orchestrator should reuse it rather than call `start` again.
+Reuse an existing worktree when continuing the same goal. `start` still uses
+the existing Orca integration; AWO does not automatically detect matching goals.
 
-## Finish check
-
-Inside the worktree:
+## Finish
 
 ```bash
-/path/to/awo/bin/awo finish
+./bin/awo finish /absolute/path/to/task-worktree
 ```
 
-This checks:
-
-- clean status
-- base movement
-- unique commits
-- upstream/unpushed state
-- high-risk filename patterns
+The existing finish report checks Git status, base movement, unique commits,
+upstream state and filename risk hints. Run project validation yourself. Finish
+uses `origin/HEAD`, falling back to `origin/main`; use audit for the configured
+project base. Neither command creates or merges a PR.
 
 ## Cleanup
 
-Preview:
+Preview all worktrees or select one:
 
 ```bash
 ./bin/awo cleanup myapp
+./bin/awo cleanup myapp --worktree /absolute/path/to/task-worktree
 ```
 
-Apply:
+Apply to an explicitly selected worktree, or explicitly opt into all safe ones:
 
 ```bash
-./bin/awo cleanup myapp --apply
+./bin/awo cleanup myapp --worktree /absolute/path/to/task-worktree --apply
+./bin/awo cleanup myapp --all-safe --apply
 ```
 
-## Recommended AI prompt
+Bare `cleanup myapp --apply` is refused. Selection is not a safety override.
+Recently discovered or active worktrees remain protected, branches are retained,
+and any nonzero final diff blocks removal. Tracked runtime/artifact/scratch detection uses filename/path heuristics;
+all ignored/untracked files block removal regardless of their category. Review the reported
+reasons; there is no force-cleanup or verified archive command.
 
-```text
-Use this repository as the control plane.
-For all Git and Orca lifecycle actions, follow AGENTS.md and
-skills/git-orchestrator/SKILL.md.
+## Watch
 
-Goal:
-<your task>
+```bash
+./bin/awo watch myapp
+./bin/awo watch myapp --json
+./bin/awo watch myapp --notify
 ```
+
+Watch performs one scan. Default thresholds are 24 hours for notice, 72 for
+stale and 168 for action required; reaching `max_worktrees` also alerts.
+Notifications are optional and macOS-specific. See the launchd helper for
+periodic execution. AWO does not clean up worktrees automatically during watch.
+
+## Agent sessions
+
+```bash
+./bin/awo sessions --json
+./bin/awo watch myapp --sessions --json
+```
+
+Session inspection is host-wide and read-only. It does not establish which
+project/worktree a process uses; correlate sessions manually. Command arguments
+are not collected. Age is not proof of inactivity, and no process is killed.
+
+## macOS scheduling
+
+Both helpers preview by default. Install a 09:00/18:00 job only when desired:
+
+```bash
+./bin/awo launchd install myapp --notify
+./bin/awo launchd install myapp --notify --apply
+./bin/awo launchd uninstall myapp --notify --apply
+```
+
+Use the same project and options when uninstalling. Optional `--config` selects
+an absolute registry path, `--awo` selects the executable, and `--label` gives
+multiple jobs distinct labels. Existing job files are not overwritten.
+Application is macOS-only; live desktop integration needs platform validation.
+
+## Limits
+
+Semantic equivalence, verified artifact archival, GOOD BASE / STALE BASE labels
+and reliable stacked-branch origin inference are deferred. A tiny final diff always needs review. Read the
+[safety model](safety-model.md) and [roadmap](../ROADMAP.md) before applying
+cleanup.

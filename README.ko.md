@@ -9,7 +9,7 @@
 Orca, Codex, Claude로 여러 Git 저장소의 AI 코딩 작업을 관리하는 작은 CLI와 운영 규칙입니다. 워크트리 상태를 확인하고, 설정한 기준 브랜치에서 독립 작업을 시작하며, 병합된 작업을 삭제하기 전에 정리 대상을 미리 확인합니다.
 
 [![CI](https://github.com/jakeparkcolde/agent-worktree-orchestrator/actions/workflows/ci.yml/badge.svg)](https://github.com/jakeparkcolde/agent-worktree-orchestrator/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/jakeparkcolde/agent-worktree-orchestrator/releases/tag/v0.1.0)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/jakeparkcolde/agent-worktree-orchestrator/blob/main/CHANGELOG.md)
 [![Status](https://img.shields.io/badge/status-experimental-orange)](#현재-상태)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -69,6 +69,8 @@ projects:
 ```bash
 ./bin/awo doctor
 ./bin/awo status myapp
+./bin/awo audit myapp
+./bin/awo watch myapp
 ```
 
 `doctor`는 도구 설치 여부와 설정 파일 존재 여부를 확인합니다. 시작 전에 기존 작업을 검토하세요. 같은 목표라면 기존 워크트리를 재사용하고, 같은 파일을 수정하는 작업은 조율합니다.
@@ -101,7 +103,7 @@ projects:
 미리보기를 검토한 후 실제로 정리하려면 다음 명령을 실행합니다.
 
 ```bash
-./bin/awo cleanup myapp --apply
+./bin/awo cleanup myapp --worktree /absolute/path/to/task-worktree --apply
 ```
 
 ## 아키텍처
@@ -127,7 +129,17 @@ AWO는 스크립트와 정책을 제공합니다. 사람이나 총괄 에이전�
 
 > Git 상태로 안전을 확인할 수 없으면 작업을 보존합니다.
 
-정리는 **미리보기가 기본**입니다. 삭제하려면 기본 체크아웃이 아니어야 하고, 미커밋 변경이 없어야 하며, 설정한 기준 참조 대비 고유 커밋이 없고 HEAD가 기준 참조에 포함되어야 합니다. 업스트림이 있으면 그곳에 푸시하지 않은 커밋도 없어야 합니다. `--apply`는 강제 옵션 없이 워크트리를 제거하고 `git branch -d`를 사용합니다. 브랜치 삭제가 실패하면 브랜치는 보존합니다.
+정리는 **미리보기가 기본**입니다. 실제 적용에는 `--worktree <정확한-경로>`
+또는 명시적인 `--all-safe`가 필요합니다. 고유 커밋이 없어도 새 워크트리와
+최근 작업은 보호됩니다. 커밋 계보, 패치 동등성, 최종 트리 차이를 별도로
+검사하며, 최종 차이가 남아 있으면 자동 삭제하지 않습니다. 미커밋 변경,
+산출물, 추적 중인 런타임 파일, 확인할 수 없는 상태도 정리를 막습니다.
+강제 옵션 없이 워크트리를 제거하고 브랜치는 보존합니다.
+
+생성 시각을 모르면 처음 발견한 시점부터 보수적으로 보호합니다. 기본은
+24시간 ACTIVE, 깨끗한 워크트리는 72시간 ACTIVE_IDLE입니다. 작은 차이만으로
+의미적 동등성을 인증하지 않으며, 검증된 아카이브 기능은 후속 과제입니다.
+[v0.2 로드맵](ROADMAP.md)에서 범위와 한계를 확인하세요.
 
 운영 규칙은 `orca worktree rm --force`, `git branch -D`, `git reset --hard`, `git clean -fd`, `git push --force`의 자동 실행을 금지합니다.
 
@@ -143,11 +155,29 @@ AWO는 스크립트와 정책을 제공합니다. 사람이나 총괄 에이전�
 
 ## 현재 상태
 
-**v0.1.0 · 실험 단계.** 원격 백업에서 복구할 수 있는 저장소에서 `merge_policy: "manual"`로 시작하세요.
+**v0.2.0 · 실험 단계.** 원격 백업에서 복구할 수 있는 저장소에서 `merge_policy: "manual"`로 시작하세요.
 
-현재 제공하는 기능은 의존 도구 확인, 저장소·워크트리 상태 확인, Orca 작업 생성, Git 마무리 보고, 정리 미리보기와 적용입니다. 같은 목표의 워크트리 자동 재사용, 수정 파일 중복 탐지, 설정한 테스트 실행, PR 생성, 병합은 CLI에 구현되어 있지 않습니다. 운영 규칙은 이러한 판단과 실행을 사람 또는 총괄 에이전트에게 맡깁니다.
+v0.2는 감사 결과에 내용 비교와 발견 메타데이터를 추가합니다. watch는
+24/72/168시간 기준과 워크트리 수 제한을 확인하며, 선택적인 macOS 알림과
+launchd 스크립트로 주기적 확인을 지원합니다. 검증된 아카이브와 의미적
+동등성 자동 인증은 후속 과제입니다. 같은 목표의 워크트리 자동 재사용,
+수정 파일 중복 탐지, 설정한 테스트 실행, PR 생성과 병합은 사람 또는
+총괄 에이전트가 맡습니다.
 
-[로드맵](docs/open-source-roadmap.md)과 [변경 이력](CHANGELOG.md)을 확인하세요.
+[v0.2 로드맵](ROADMAP.md)과 [변경 이력](CHANGELOG.md)을 확인하세요.
+
+## 자연어로 작업 시작하기 — 계획 단계
+
+예를 들어 “AWO 카카오 비서관련 레포 작업 하고 싶다”라고 요청하면, 향후
+Codex 총괄 흐름이 등록된 프로젝트 이름·별칭으로 저장소를 찾고 같은 목표의
+워크트리가 있는지 먼저 확인하도록 할 수 있습니다. 독립 작업이면 설정된
+`base_ref`(보통 `origin/main`)에서 시작하고, 기존 작업을 이어가면 재사용합니다.
+저장소가 모호하거나 구체적인 작업 목표가 빠졌을 때만 추가로 묻습니다.
+
+**현재 CLI에는 자연어 해석이나 별칭 기능이 없습니다.** 총괄 에이전트가
+프로젝트, 작업 이름, 목표를 정해 기존 `awo start`에 전달해야 합니다.
+저장소를 언급했다는 이유만으로 예비 워크트리를 만들지는 않습니다.
+[계획된 흐름](ROADMAP.md#planned-natural-language-entry-flow)을 참고하세요.
 
 ## 문서와 기여
 

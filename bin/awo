@@ -11,13 +11,21 @@ Usage:
   awo status <project>
   awo start <project> <task-name> [agent] [goal]
   awo finish [repo-path]
-  awo cleanup <project> [--apply]
+  awo audit <project> [--json]
+  awo watch <project> [--json] [--notify] [--sessions]
+  awo sessions [--json] [--threshold-hours HOURS]
+  awo launchd install|uninstall <project> [--apply] [--notify]
+  awo --version
+  awo cleanup <project> [--worktree PATH | --all-safe] [--apply] [--json]
   awo help
 EOF
 }
 
 cmd="${1:-help}"
 case "$cmd" in
+  --version|version)
+    cat "$ROOT/VERSION"
+    ;;
   doctor)
     exec "$ROOT/scripts/doctor.sh"
     ;;
@@ -32,6 +40,18 @@ case "$cmd" in
   finish)
     shift
     exec "$ROOT/scripts/task-finish.sh" "$@"
+    ;;
+  sessions)
+    shift
+    exec python3 "$ROOT/scripts/awo_sessions.py" "$@"
+    ;;
+  launchd)
+    shift
+    exec python3 "$ROOT/scripts/awo_launchd.py" "$@"
+    ;;
+  audit|watch)
+    shift
+    exec python3 "$ROOT/scripts/awo_audit.py" "$cmd" "$@"
     ;;
   cleanup)
     shift

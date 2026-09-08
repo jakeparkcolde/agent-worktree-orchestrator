@@ -1,4 +1,3 @@
-\
 # Agent Worktree Orchestrator — Workspace Contract
 
 This repository is a control plane for operating AI coding work across multiple Git repositories.
@@ -109,7 +108,14 @@ git clean -fd
 git push --force
 ```
 
-Only remove a worktree when it is clean and its HEAD is fully contained in the configured base with no unpushed unique commits.
+Application requires an explicit `--worktree` or `--all-safe` selection.
+Only remove a non-primary worktree when it is clean, its HEAD is fully contained
+in the configured base, it has no unpushed unique commits, and both patch-unique
+count and final tree diff are zero. Preserve newly discovered/recently active
+worktrees, artifacts, tracked runtime/scratch, ignored/untracked files and
+uninspectable state. Never infer safety from an old commit timestamp or a small
+diff. Keep branches after removing eligible worktrees. See the safety model for
+metadata and protection defaults.
 
 ## Reporting
 
