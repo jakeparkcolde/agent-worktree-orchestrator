@@ -14,6 +14,8 @@ Usage:
   awo audit <project> [--json]
   awo watch <project> [--json] [--notify] [--sessions]
   awo sessions [--json] [--threshold-hours HOURS]
+  awo disk check [PATH] [--notify] [--json] [threshold options]
+  awo disk launchd install|uninstall [PATH] [--interval-seconds N] [--apply]
   awo launchd install|uninstall <project> [--apply] [--notify]
   awo --version
   awo cleanup <project> [--worktree PATH | --all-safe] [--apply] [--json]
@@ -40,6 +42,10 @@ case "$cmd" in
   finish)
     shift
     exec "$ROOT/scripts/task-finish.sh" "$@"
+    ;;
+  disk)
+    shift
+    exec python3 "$ROOT/scripts/awo_disk.py" "$@"
     ;;
   sessions)
     shift

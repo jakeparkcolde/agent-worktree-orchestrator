@@ -109,6 +109,10 @@ stale and 168 for action required; reaching `max_worktrees` also alerts.
 Notifications are optional and macOS-specific. See the launchd helper for
 periodic execution. AWO does not clean up worktrees automatically during watch.
 
+For host free-space alerts with persistent transition tracking, use the separate
+[`awo disk check` / `awo disk launchd` commands](disk-watch.md). They default to
+10 GB warning, 5 GB critical, and 15 GB recovery, with configurable thresholds.
+
 ## Agent sessions
 
 ```bash
