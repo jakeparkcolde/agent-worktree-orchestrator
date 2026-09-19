@@ -173,10 +173,28 @@ The v0.2 audit adds content evidence and discovery metadata to worktree
 inspection. Watch alerts use 24/72/168-hour thresholds and the project worktree
 limit. Optional macOS notifications and launchd scripts support periodic checks.
 Verified archival and automatic semantic-equivalence certification are deferred.
-Automatic same-goal reuse, overlap detection, configured test execution, PR
-creation and merging remain duties of the human or supervising agent.
+`awo request` reuses worktrees associated with the same normalized goal. Semantic
+goal matching, overlap coordination, configured test execution, PR creation and
+merging remain duties of the human or supervising agent.
 
 See the [v0.2 roadmap](ROADMAP.md) and [changelog](CHANGELOG.md).
+
+## Goal-based entry
+
+Register pipe-separated `aliases` in `projects.yaml`, then let the supervising
+agent pass a concrete `--goal` to `awo request`. Missing goals or ambiguous
+projects return a clarification action without creating a worktree.
+
+```bash
+./bin/awo request 'AWO my app' --goal 'Fix missing notifications'
+./bin/awo request 'AWO my app' --goal 'Fix missing notifications' --apply
+```
+
+Preview existing work first. Application reuses an associated goal or calls
+`awo start` with the configured base and Orca `--no-parent`. Unregistered worktrees
+require inspection before selecting `--worktree PATH` or declaring `--new-goal`.
+The default `--agent none` lets the current agent continue at the returned path.
+See the [entry and hub integration guide](docs/request-entry.md).
 
 ## Documentation and contributing
 

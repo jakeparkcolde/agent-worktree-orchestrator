@@ -43,8 +43,9 @@ checkout. Ordinary observation must not reset activity on every invocation.
 - Base-quality labels GOOD BASE / STALE BASE and reliable STACKED origin
   detection: Git ancestry alone does not prove which
   branch the user selected when creating a worktree.
-- Automatic goal reuse, overlapping-edit coordination, configured validation
+- Semantic goal matching, overlapping-edit coordination, configured validation
   execution, PR creation and merging remain supervising-workflow duties.
+  Explicit goal association and reuse are implemented by `awo request`.
 
 Optional agent session inspection should show process identity, TTY and age
 without command arguments; recommend closing completed sessions in Orca.
@@ -62,21 +63,17 @@ Run regression tests and `git diff --check`, review the staged paths for
 private state/logs/artifacts, and publish source only. Tag a release only when
 existing repository release practice and verification support it.
 
-## Planned natural-language entry flow
+## Natural-language entry flow — implemented on this branch
 
-A supervising Codex workflow could accept “AWO 카카오 비서관련 레포 작업 하고
-싶다”, resolve the repository from registered project names/aliases, and inspect
-existing worktrees before deciding what to start. This natural-language routing
-and alias support are planned; the current CLI does not implement them.
+`awo request TEXT` resolves registered names and pipe-separated aliases, returns
+existing worktrees and recorded goals, and asks for a concrete `--goal` before
+starting anything. The supervising agent interprets the user's intent; the CLI
+does not invoke an LLM. Ambiguous matches require explicit project selection.
 
-1. Resolve the intended registered repository. Ask only when the match is
-   ambiguous or the task goal is missing.
-2. Inspect existing worktrees and reuse one for the same goal.
-3. For a concrete independent goal, choose a task name and call the existing
-   `awo start PROJECT TASK_NAME AGENT GOAL` command.
-4. Use the configured `base_ref` (normally `origin/main`) with Orca
-   `--no-parent`; do not assume every project uses main.
-5. Confirm the created path/base and report where work will continue.
+With `--apply`, reuse a verified worktree for the same normalized goal or call
+`awo start` with the configured base ref and Orca `--no-parent`. Existing worktrees
+without goal records must be inspected before association or independent creation.
+The default `--agent none` supports continuing in the current agent session.
 
 Do not create speculative worktrees merely because a repository was mentioned.
 The CLI still requires a task name and goal supplied by the supervising workflow.
@@ -91,5 +88,11 @@ turn start are distinct facts; a created directory is not a running worker.
 If worker dispatch fails, preserve the worktree and repair the handoff. Do not
 move the coordinator into the worktree and silently perform implementation.
 Existing-goal reuse must preserve its checkout and use exact-path selection.
-This contract does not implement natural-language routing, automatic goal
-matching or ongoing background monitoring.
+Natural-language project matching is provided separately by `awo request`;
+the dispatch contract adds no automatic goal inference or background monitoring.
+
+Metadata is local to the target Git common directory. Reuse preserves dirty work;
+missing/replaced worktrees and in-progress Git operations are not silently accepted.
+A repository lock serializes request application. See [entry documentation](docs/request-entry.md)
+for the supervising workflow, limitations and a proposed hub instruction snippet.
+Hub repository files are never installed or modified automatically.

@@ -10,6 +10,7 @@ Usage:
   awo doctor
   awo status <project>
   awo start <project> <task-name> [agent] [goal] [--worktree PATH] [--new-session]
+  awo request <text> [--project KEY] [--goal GOAL] [--task NAME] [--apply]
   awo finish [repo-path]
   awo audit <project> [--json]
   awo watch <project> [--json] [--notify] [--sessions]
@@ -42,6 +43,10 @@ case "$cmd" in
   start)
     shift
     exec "$ROOT/scripts/task-start.sh" "$@"
+    ;;
+  request)
+    shift
+    exec python3 "$ROOT/scripts/awo_request.py" "$@"
     ;;
   finish)
     shift

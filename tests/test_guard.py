@@ -45,7 +45,7 @@ class GuardTests(unittest.TestCase):
         code, msg = self.check(self.other / 'm.py')
         self.assertEqual(code, 0)
         self.assertIn('other', msg['systemMessage'])
-        self.assertIn('awo start other', msg['hookSpecificOutput']['additionalContext'])
+        self.assertIn('AWO other', msg['hookSpecificOutput']['additionalContext'])
         self.assertIsNone(self.check(self.other / 'n.py')[1])
         self.assertIsNotNone(self.check(self.other / 'n.py', session='s2')[1])
 

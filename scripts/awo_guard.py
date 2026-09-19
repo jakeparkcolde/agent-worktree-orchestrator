@@ -15,7 +15,8 @@ import awo_ledger as ledger
 from awo_report import project_list
 
 MESSAGE = ('AWO: {path} 는 다른 프로젝트 「{name}」의 main 체크아웃이에요. 여기서 바로 고치면 {name}의 '
-           '주인 없는 미커밋으로 쌓여요. `awo start {name} <작업이름>` 으로 워크트리를 만들어 거기서 고치고 커밋하는 걸 권장해요.')
+           '주인 없는 미커밋으로 쌓여요. 「AWO {name} <할 일>」처럼 요청하면(`awo request`) 워크트리를 만들어 '
+           '거기서 고치고 커밋해요.')
 
 
 def primaries():

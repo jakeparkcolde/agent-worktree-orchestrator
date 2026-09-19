@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 import awo_start as start
 
+REAL_RUN = subprocess.run
+
 
 class DispatchTests(unittest.TestCase):
     def setUp(self):
@@ -29,6 +31,30 @@ class DispatchTests(unittest.TestCase):
 
     def g(self, *args):
         return subprocess.run(['git', '-C', str(self.repo), *args], check=True, capture_output=True, text=True)
+
+    def test_none_agent_creates_worktree_without_terminal(self):
+        self.args.worktree = None
+        self.args.agent = 'none'
+        created = self.root / 'none-wt'
+        def fake_orca(*a):
+            if a[:2] == ('worktree', 'create'):
+                self.assertNotIn('--agent', a)
+                self.assertNotIn('--prompt', a)
+                self.g('worktree', 'add', '-qb', 'none-task', str(created))
+                return {'ok': True, 'result': {'worktree': {'path': str(created)}}}
+            raise AssertionError('no terminal calls expected: %r' % (a,))
+        with patch.object(start, 'orca', side_effect=fake_orca), \
+             patch.object(start, 'config', side_effect=lambda p, f, d=None: {'path': str(self.repo), 'base_ref': 'HEAD', 'max_worktrees': '9'}.get(f, d)), \
+             patch.object(start.subprocess, 'run', side_effect=self.fake_run):
+            value, code = start.launch(self.args, self.repo, 'HEAD', 'none', 'none-task')
+        self.assertEqual((code, value['awo_dispatch']['state']), (0, 'worktree_only'))
+
+    def fake_run(self, argv, **kw):
+        if argv[:1] == ['git'] and 'fetch' in argv:
+            return subprocess.CompletedProcess(argv, 0, '', '')
+        if argv and str(argv[0]).endswith('orca-repo-id.sh'):
+            return subprocess.CompletedProcess(argv, 0, 'rid\n', '')
+        return subprocess.run.__wrapped__(argv, **kw) if hasattr(subprocess.run, '__wrapped__') else REAL_RUN(argv, **kw)
 
     def test_primary_rejected(self):
         with self.assertRaises(RuntimeError):

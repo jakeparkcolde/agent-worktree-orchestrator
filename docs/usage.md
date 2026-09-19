@@ -240,3 +240,10 @@ Semantic equivalence, verified artifact archival, GOOD BASE / STALE BASE labels
 and reliable stacked-branch origin inference are deferred. A tiny final diff always needs review. Read the
 [safety model](safety-model.md) and [roadmap](../ROADMAP.md) before applying
 cleanup.
+
+## Goal request entry
+
+Use `awo request TEXT [--goal GOAL]` to preview alias resolution and existing work.
+Add `--apply` after inspection to reuse or create through `awo start`.
+See [the entry guide](request-entry.md) for clarification actions, existing-goal
+association, `--new-goal`, and the optional hub instruction snippet.

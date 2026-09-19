@@ -114,15 +114,18 @@ def launch(args, primary, base, agent, task):
             raise RuntimeError('Task worktree already exists; use --worktree PATH')
         if len(rows) >= int(config(args.project, 'max_worktrees', '3')):
             raise RuntimeError('Worktree limit reached')
-        subprocess.run(['git', '-C', str(primary), 'fetch', '--prune', 'origin'],
-                       check=True, capture_output=True, timeout=40)
+        if base.startswith('origin/'):  # local-only repositories use a local base
+            subprocess.run(['git', '-C', str(primary), 'fetch', '--prune', 'origin'],
+                           check=True, capture_output=True, timeout=40)
         git(primary, 'rev-parse', '--verify', base + '^{commit}')
         rid = subprocess.run([str(Path(__file__).parent / 'orca-repo-id.sh'), str(primary)],
                              capture_output=True, text=True, check=True, timeout=40).stdout.strip()
         argv = ['worktree', 'create', '--repo', 'id:' + rid, '--name', task,
-                '--setup', 'run', '--base-branch', base, '--no-parent', '--agent', agent]
-        if args.goal:
-            argv += ['--prompt', args.goal]
+                '--setup', 'run', '--base-branch', base, '--no-parent']
+        if agent != 'none':
+            argv += ['--agent', agent]
+            if args.goal:
+                argv += ['--prompt', args.goal]
         try:
             raw = orca(*argv)
         except (RuntimeError, subprocess.SubprocessError, OSError):
@@ -136,6 +139,7 @@ def launch(args, primary, base, agent, task):
             return raw, 3
         wt = result.get('worktree') or {}
         path = (wt.get('path') or wt.get('worktreePath')) if isinstance(wt, dict) else None
+        path = path or result.get('path')
         if not isinstance(path, str) or not Path(path).is_absolute():
             receipt['reason'] = 'Worktree response has no verifiable path; inspect Orca before retrying'
             raw['awo_dispatch'] = receipt
@@ -151,6 +155,11 @@ def launch(args, primary, base, agent, task):
             receipt.update(path=str(target), reason='Created path could not be verified; inspect Orca before retrying')
             raw['awo_dispatch'] = receipt
             return raw, 3
+        if agent == 'none':
+            receipt.update(path=str(target), branch=branch, state='worktree_only',
+                           reason='Worktree created without an agent terminal; the supervising agent continues in this path')
+            raw['awo_dispatch'] = receipt
+            return raw, 0
         startup = result.get('startupTerminal') or {}
         handle = (startup.get('handle') if isinstance(startup, dict) else None) or result.get('agentTerminalHandle')
         if result.get('agentTerminalHandle') and result.get('agentTerminalHandle') != handle:

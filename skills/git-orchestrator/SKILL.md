@@ -17,6 +17,26 @@ Priority:
 4. avoid parallel edit overlap
 5. automate only when safety is observable
 
+## Natural-language entry from a hub
+
+For “AWO … work” requests, read `docs/request-entry.md` and use a fixed absolute
+CLI path and `AWO_PROJECTS_FILE`. Resolve registered aliases with `awo request`.
+Extract a concrete goal from the user's request; ask if absent. Never substitute
+a broad project name for a goal. AWO is the command prefix, not a project match.
+
+Preview worktrees, known goals and changed files before applying. For a continuation,
+use the recorded goal wording; for unregistered work inspect the branch, requirements
+and changes before `--worktree PATH --apply`. Use `--new-goal` only after checking
+that unregistered worktrees have different goals. Do not infer identity from a
+branch name alone. Respect clarification and blocked actions without retrying
+creation blindly. Check for overlapping edits before a new independent task.
+
+Use the default `--agent none` to continue work in the current session. Start another
+agent only when requested/authorized. After application, check action, returned
+path and base and continue in that worktree under its repository instructions.
+A hub stays on its main branch. Do not modify hub instructions automatically;
+prepare the exact integration snippet for the user when needed.
+
 ## New worktree decision
 
 Do not create a new worktree for:

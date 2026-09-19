@@ -43,8 +43,15 @@ selected worktree. Creating a Git worktree alone does not complete a handoff.
   task there as an automatic fallback. Repair or retry the independent dispatch.
 - Coordinate overlapping files before parallel dispatch; no speculative workers.
 
-This is an operating contract. It does not imply automatic natural-language
-project matching or background monitoring by the CLI.
+This is an operating contract. It does not imply background monitoring by the CLI.
+
+## Natural-language entry
+
+Use `awo request` and the workflow in `docs/request-entry.md` for hub requests.
+The supervisor supplies a concrete goal, inspects existing work and uses the returned
+path. By default (`--agent none`) the worktree is created without a new terminal and
+the current agent continues there; pass `--agent codex|claude` to dispatch an
+independent worker instead. Do not install hub instructions or infer a goal from a project mention alone.
 
 ## Start workflow
 

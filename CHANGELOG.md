@@ -19,6 +19,10 @@
 - Require explicit goal delivery and report creation/session/turn evidence
   separately; preserve worktrees when dispatch is incomplete.
 - Document exact-path reuse and prohibit coordinator implementation fallback.
+- Add `request` project aliases, goal preview, local associations and worktree reuse.
+- Require a concrete goal and inspection of unregistered work before creation.
+- Support `start ... none` for the current agent; pass the configured base explicitly.
+- Document hub integration without modifying the hub repository.
 
 ## 0.2.0 — 2026-09-08
 

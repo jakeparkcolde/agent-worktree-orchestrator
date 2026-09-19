@@ -8,6 +8,8 @@
 projects:
   example-app:
     path: "/absolute/path/to/example-app"
+    # Optional pipe-separated scalar; existing entries without aliases still work.
+    aliases: "my app|예제 앱"
     base_ref: "origin/main"
     max_worktrees: 3
     # Flat v0.2 fields; protection cannot be lowered below 24/72 hours.
