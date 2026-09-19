@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 out="$("$ROOT/bin/awo" help)"
 printf "%s" "$out" | grep -q "Agent Worktree Orchestrator"
 printf "%s" "$out" | grep -q "awo cleanup"
+printf "%s" "$out" | grep -q "awo terminals"
 # Execute without Bash's fallback for files missing a valid shebang.
 python3 - "$ROOT" <<'PYTHON'
 import json

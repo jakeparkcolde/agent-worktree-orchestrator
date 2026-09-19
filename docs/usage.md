@@ -120,6 +120,39 @@ Session inspection is host-wide and read-only. It does not establish which
 project/worktree a process uses; correlate sessions manually. Command arguments
 are not collected. Age is not proof of inactivity, and no process is killed.
 
+## Orca terminals
+
+Terminals pile up when finished agents leave their shells behind or a
+conversation is reopened in a new tab. Inspect one project's terminals:
+
+```bash
+./bin/awo terminals myapp
+./bin/awo terminals myapp --close-safe          # preview what would close
+./bin/awo terminals myapp --close-safe --apply  # close them
+```
+
+Each terminal in the project's checkouts is classified:
+
+| State | Meaning | Closed by `--close-safe --apply` |
+|---|---|---|
+| `SELF` | the terminal running the command | never |
+| `WORKING` | agent with recent output | never |
+| `IDLE_AGENT` | live agent quiet past the threshold | never (reported only) |
+| `EXITED` | agent exited; screen ends at a shell prompt after its resume hint | yes, when idle past the threshold |
+| `DUPLICATE` | agent blocked because the conversation is open elsewhere | yes, when idle past the threshold |
+| `IDLE_SHELL` | plain shell waiting at a prompt | yes, when idle past the threshold |
+| `BUSY_SHELL` | plain shell not at a prompt (it may run a service) | never |
+| `UNKNOWN` | Orca reported no activity time | never |
+
+The threshold defaults to 12 hours (`--threshold-hours`). Before closing, each
+candidate is re-read and skipped if its state changed. A truncated listing
+refuses `--apply`. Closing a terminal does not delete the agent's conversation
+history; it can be resumed later.
+
+When two or more agents are working in the same checkout, the command prints a
+warning: their uncommitted changes can end up mixed in one commit. Move one of
+them to its own worktree (`awo start`).
+
 ## macOS scheduling
 
 Both helpers preview by default. Install a 09:00/18:00 job only when desired:

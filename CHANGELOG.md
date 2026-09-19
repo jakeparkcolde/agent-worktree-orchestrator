@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add `awo terminals`: classify a project's Orca terminals, warn when several
+  agents work in one checkout, and close only exited, duplicate or idle-prompt
+  terminals with `--close-safe --apply` (live agents are never closed).
 - Separate coordinator dispatch from independent Orca worker execution.
 - Require explicit goal delivery and report creation/session/turn evidence
   separately; preserve worktrees when dispatch is incomplete.

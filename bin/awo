@@ -14,6 +14,7 @@ Usage:
   awo audit <project> [--json]
   awo watch <project> [--json] [--notify] [--sessions]
   awo sessions [--json] [--threshold-hours HOURS]
+  awo terminals <project> [--threshold-hours HOURS] [--close-safe [--apply]] [--json]
   awo launchd install|uninstall <project> [--apply] [--notify]
   awo --version
   awo cleanup <project> [--worktree PATH | --all-safe] [--apply] [--json]
@@ -44,6 +45,10 @@ case "$cmd" in
   sessions)
     shift
     exec python3 "$ROOT/scripts/awo_sessions.py" "$@"
+    ;;
+  terminals)
+    shift
+    exec python3 "$ROOT/scripts/awo_terminals.py" "$@"
     ;;
   launchd)
     shift
