@@ -153,6 +153,72 @@ When two or more agents are working in the same checkout, the command prints a
 warning: their uncommitted changes can end up mixed in one commit. Move one of
 them to its own worktree (`awo start`).
 
+## Work ledger and ownership
+
+Uncommitted changes pile up when agents edit several repositories and nobody
+remembers which session changed what. AWO keeps a work ledger:
+
+```bash
+./bin/awo hooks install            # preview the Claude Code hooks
+./bin/awo hooks install --apply    # add them to ~/.claude/settings.json (backup first)
+./bin/awo ledger who path/to/file  # which session touched this file
+./bin/awo ledger files --terminal term_xxx
+```
+
+- `PostToolUse` runs `awo ledger record`: every Edit/Write/MultiEdit/NotebookEdit
+  appends session, Orca terminal, repository and file to `~/.awo/ledger/*.jsonl`.
+- Codex sessions are read from their rollout files (`awo ledger ingest-codex`,
+  also run by `awo report`).
+- `PreToolUse` runs `awo guard`: editing a file inside ANOTHER registered
+  project's primary checkout shows a warning once per session and repository.
+  `AWO_GUARD=block` denies instead; `AWO_GUARD=off` disables it.
+- Both hooks are fail-open: an error never blocks the agent. Files changed by
+  shell commands are not recorded and appear as unknown owner.
+
+## Daily report
+
+```bash
+./bin/awo report                   # all registered projects
+./bin/awo report --save --notify   # write ~/.awo/reports/YYYY-MM-DD.md
+./bin/awo launchd install --job report --notify          # preview 09:00 job
+./bin/awo launchd install --job report --notify --apply
+```
+
+For every checkout: uncommitted files grouped by owner session (and whether its
+terminal is still open), unknown-owner files, tool-written runtime files
+(ignore-list candidates), unpushed commits, branches more than 20 commits
+behind base, and a warning when several agents work in one checkout.
+
+## Retiring one terminal
+
+```bash
+./bin/awo terminals myapp --retire "part of title"          # preview
+./bin/awo terminals myapp --retire term_1a2b --apply
+```
+
+The selector must match exactly one terminal. For a live agent that is idle at
+its prompt, AWO sends one wrap-up request: save unsaved decisions, commit only
+the files this session changed (explicit paths, never `git add -A`), no push.
+The agent must answer with a line bound to a one-time token
+(`AWO-RETIRE <token> DONE|BLOCKED`). AWO then re-checks git using the ledger
+and closes the terminal only when nothing of that terminal is left
+uncommitted. A busy agent, a BLOCKED answer, a missing answer or leftover files
+keep the terminal open with the reason. Terminals without a live agent close
+only when the ledger shows no uncommitted files of theirs.
+
+## Shared modules
+
+```bash
+./bin/awo shared
+./bin/awo shared --repo gitbap=~/gitbap --repo sns=~/repos/sns-marketer
+```
+
+Lists files with identical content in several projects, and files with the
+same parent folder and name (e.g. `supabase/server.ts`) whose content has
+diverged. Tool-managed folders (`.claude`, `.moai`, `node_modules`, ...) are
+skipped. Use it to pick one home repository for a module before copies drift
+further.
+
 ## macOS scheduling
 
 Both helpers preview by default. Install a 09:00/18:00 job only when desired:

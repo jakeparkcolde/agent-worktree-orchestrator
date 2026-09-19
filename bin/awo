@@ -15,7 +15,12 @@ Usage:
   awo watch <project> [--json] [--notify] [--sessions]
   awo sessions [--json] [--threshold-hours HOURS]
   awo terminals <project> [--threshold-hours HOURS] [--close-safe [--apply]] [--json]
-  awo launchd install|uninstall <project> [--apply] [--notify]
+  awo launchd install|uninstall [<project>] [--job watch|report] [--apply] [--notify]
+  awo report [--save] [--notify] [--json]
+  awo ledger record|ingest-codex|who <file>|files --terminal H
+  awo guard                        (Claude PreToolUse hook; reads JSON on stdin)
+  awo hooks install|uninstall|status [--apply]
+  awo shared [--repo NAME=PATH ...] [--json]
   awo --version
   awo cleanup <project> [--worktree PATH | --all-safe] [--apply] [--json]
   awo help
@@ -49,6 +54,26 @@ case "$cmd" in
   terminals)
     shift
     exec python3 "$ROOT/scripts/awo_terminals.py" "$@"
+    ;;
+  report)
+    shift
+    exec python3 "$ROOT/scripts/awo_report.py" "$@"
+    ;;
+  ledger)
+    shift
+    exec python3 "$ROOT/scripts/awo_ledger.py" "$@"
+    ;;
+  guard)
+    shift
+    exec python3 "$ROOT/scripts/awo_guard.py" "$@"
+    ;;
+  hooks)
+    shift
+    exec python3 "$ROOT/scripts/awo_hooks.py" "$@"
+    ;;
+  shared)
+    shift
+    exec python3 "$ROOT/scripts/awo_shared.py" "$@"
     ;;
   launchd)
     shift

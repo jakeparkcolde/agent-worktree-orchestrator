@@ -63,6 +63,11 @@ class LaunchdTests(unittest.TestCase):
         self.assertNotIn('StandardOutPath', payload)
         self.assertNotIn('StandardErrorPath', payload)
 
+    def test_report_job_runs_daily_report(self):
+        payload = launchd.build_plist('com.awo.report', '/tmp/awo', '', None, True, 'report')
+        self.assertEqual(payload['ProgramArguments'][1:], ['report', '--save', '--notify'])
+        self.assertEqual([x['Hour'] for x in payload['StartCalendarInterval']], [9])
+
     def test_label_rejects_path_traversal(self):
         with self.assertRaises(ValueError):
             launchd.build_plist('../../other', '/tmp/awo', 'project')

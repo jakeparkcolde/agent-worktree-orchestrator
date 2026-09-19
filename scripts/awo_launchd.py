@@ -9,15 +9,19 @@ import subprocess
 import sys
 
 
-def build_plist(label, executable, project, config=None, notify=False):
+def build_plist(label, executable, project, config=None, notify=False, job='watch'):
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]+', label):
         raise ValueError('label must contain only letters, digits, dots and hyphens')
-    args = [str(Path(executable).expanduser().resolve()), 'watch', project]
+    if job == 'report':
+        args = [str(Path(executable).expanduser().resolve()), 'report', '--save']
+        schedule = [{'Hour': 9, 'Minute': 0}]
+    else:
+        args = [str(Path(executable).expanduser().resolve()), 'watch', project]
+        schedule = [{'Hour': 9, 'Minute': 0}, {'Hour': 18, 'Minute': 0}]
     if notify:
         args.append('--notify')
     result = {'Label': label, 'ProgramArguments': args,
-              'StartCalendarInterval': [{'Hour': 9, 'Minute': 0},
-                                        {'Hour': 18, 'Minute': 0}],
+              'StartCalendarInterval': schedule,
               'RunAtLoad': False,
               'EnvironmentVariables': {'PATH': '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'}}
     if config:
@@ -28,17 +32,19 @@ def build_plist(label, executable, project, config=None, notify=False):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['install', 'uninstall'])
-    parser.add_argument('project', help='use the original project for uninstall')
+    parser.add_argument('project', nargs='?', default='', help='watch job: the project (use the original for uninstall)')
+    parser.add_argument('--job', choices=['watch', 'report'], default='watch', help='report: 09:00 cross-project work report')
     parser.add_argument('--apply', action='store_true')
-    parser.add_argument('--label', default='com.awo.watch')
+    parser.add_argument('--label')
     parser.add_argument('--awo', default=str(Path(__file__).resolve().parent.parent / 'bin/awo'))
     parser.add_argument('--config')
     parser.add_argument('--notify', action='store_true')
     args = parser.parse_args()
-    if args.action == 'install' and not args.project:
+    args.label = args.label or ('com.awo.report' if args.job == 'report' else 'com.awo.watch')
+    if args.action == 'install' and args.job == 'watch' and not args.project:
         parser.error('install requires a project')
     try:
-        payload = build_plist(args.label, args.awo, args.project or '', args.config, args.notify)
+        payload = build_plist(args.label, args.awo, args.project or '', args.config, args.notify, args.job)
     except ValueError as error:
         parser.error(str(error))
     target = Path.home() / 'Library/LaunchAgents' / (args.label + '.plist')
