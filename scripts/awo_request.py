@@ -28,7 +28,7 @@ def registry():
     result = {}
     for key in keys:
         fields = {}
-        for field, default in [('path', None), ('aliases', ''), ('base_ref', 'origin/main'),
+        for field, default in [('path', None), ('aliases', ''), ('description', ''), ('base_ref', 'origin/main'),
                                ('max_worktrees', '3')]:
             p = subprocess.run([str(ROOT / 'scripts/project-value.sh'), key, field],
                                capture_output=True, text=True)
@@ -198,12 +198,17 @@ def main():
     parser.add_argument('--new-goal', action='store_true', help='existing unregistered worktrees were checked')
     parser.add_argument('--agent', default='none', choices=['none', 'codex', 'claude'])
     parser.add_argument('--apply', action='store_true')
+    parser.add_argument('--advise', choices=['none', 'jev'], default='none',
+                        help='opt in to external candidate advice in preview only')
     args = parser.parse_args()
     projects = registry()
     matches = resolve(args.text, projects, args.project)
     if len(matches) != 1:
-        print(json.dumps({'action': 'needs_project', 'candidates': matches,
-                          'registered_projects': list(projects)}, ensure_ascii=False))
+        report = {'action': 'needs_project', 'candidates': matches,
+                  'registered_projects': list(projects)}
+        from awo_advice import advise
+        report['advisory'] = advise(args, projects, report)
+        print(json.dumps(report, ensure_ascii=False))
         return 0
     key = matches[0]
     project = projects[key]
@@ -217,6 +222,8 @@ def main():
     report = {'project': key, 'repo_path': path, 'base_ref': project['base_ref'],
               'mode': 'APPLY' if args.apply else 'PREVIEW', 'worktrees': rows,
               'known_goals': active_tasks(tasks, rows), **decision}
+    from awo_advice import advise
+    report['advisory'] = advise(args, projects, report)
     print(json.dumps(report, indent=2, ensure_ascii=False))
     return 1 if decision['action'] == 'blocked' else 0
 

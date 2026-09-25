@@ -1,0 +1,609 @@
+{
+  "source": "live",
+  "model": "jev-1.13.0",
+  "confidence_is_accuracy": false,
+  "live_api_verified": true,
+  "is_accuracy_measurement": true,
+  "results": [
+    {
+      "id": "paraphrased-continuation",
+      "status": "schema_valid",
+      "answers": {
+        "project": {
+          "choice": "project:secretary",
+          "confidence": 1.0,
+          "probabilities": {
+            "multiple": 0.0,
+            "project:secretary": 1.0,
+            "project:orders": 0.0,
+            "none": 0.0,
+            "ambiguous": 0.0,
+            "project:content": 0.0
+          }
+        },
+        "existing_goal": {
+          "choice": "task:alert",
+          "confidence": 0.98,
+          "probabilities": {
+            "multiple": 0.0,
+            "task:alert": 0.98,
+            "none": 0.01,
+            "ambiguous": 0.01,
+            "task:duplicate": 0.0,
+            "task:video": 0.0
+          }
+        },
+        "request_type": {
+          "choice": "implementation",
+          "confidence": 0.97,
+          "probabilities": {
+            "multiple": 0.0,
+            "review": 0.0,
+            "implementation": 0.99,
+            "research": 0.0,
+            "none": 0.0,
+            "unclear": 0.01
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1247
+      },
+      "label_matches": {
+        "project": true,
+        "existing_goal": true,
+        "request_type": true
+      }
+    },
+    {
+      "id": "review-only",
+      "status": "schema_valid",
+      "answers": {
+        "project": {
+          "choice": "project:orders",
+          "confidence": 1.0,
+          "probabilities": {
+            "project:orders": 1.0,
+            "ambiguous": 0.0,
+            "project:content": 0.0,
+            "none": 0.0,
+            "project:secretary": 0.0,
+            "multiple": 0.0
+          }
+        },
+        "existing_goal": {
+          "choice": "task:duplicate",
+          "confidence": 0.97,
+          "probabilities": {
+            "task:video": 0.0,
+            "ambiguous": 0.01,
+            "none": 0.02,
+            "task:alert": 0.0,
+            "multiple": 0.0,
+            "task:duplicate": 0.97
+          }
+        },
+        "request_type": {
+          "choice": "review",
+          "confidence": 1.0,
+          "probabilities": {
+            "review": 1.0,
+            "unclear": 0.0,
+            "none": 0.0,
+            "multiple": 0.0,
+            "research": 0.0,
+            "implementation": 0.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1249
+      },
+      "label_matches": {
+        "project": true,
+        "existing_goal": true,
+        "request_type": true
+      }
+    },
+    {
+      "id": "research",
+      "status": "schema_valid",
+      "answers": {
+        "project": {
+          "choice": "project:content",
+          "confidence": 1.0,
+          "probabilities": {
+            "project:orders": 0.0,
+            "project:secretary": 0.0,
+            "none": 0.0,
+            "project:content": 1.0,
+            "multiple": 0.0,
+            "ambiguous": 0.0
+          }
+        },
+        "existing_goal": {
+          "choice": "task:video",
+          "confidence": 0.99,
+          "probabilities": {
+            "multiple": 0.0,
+            "task:alert": 0.0,
+            "none": 0.0,
+            "task:video": 1.0,
+            "task:duplicate": 0.0,
+            "ambiguous": 0.0
+          }
+        },
+        "request_type": {
+          "choice": "research",
+          "confidence": 0.98,
+          "probabilities": {
+            "multiple": 0.0,
+            "unclear": 0.0,
+            "none": 0.0,
+            "implementation": 0.0,
+            "research": 0.99,
+            "review": 0.01
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1247
+      },
+      "label_matches": {
+        "project": true,
+        "existing_goal": true,
+        "request_type": true
+      }
+    },
+    {
+      "id": "new-goal",
+      "status": "schema_valid",
+      "answers": {
+        "project": {
+          "choice": "project:orders",
+          "confidence": 0.99,
+          "probabilities": {
+            "project:secretary": 0.0,
+            "none": 0.01,
+            "ambiguous": 0.0,
+            "project:orders": 0.99,
+            "project:content": 0.0,
+            "multiple": 0.0
+          }
+        },
+        "existing_goal": {
+          "choice": "none",
+          "confidence": 0.99,
+          "probabilities": {
+            "task:alert": 0.0,
+            "none": 0.99,
+            "ambiguous": 0.0,
+            "task:video": 0.0,
+            "task:duplicate": 0.01,
+            "multiple": 0.0
+          }
+        },
+        "request_type": {
+          "choice": "implementation",
+          "confidence": 0.99,
+          "probabilities": {
+            "implementation": 1.0,
+            "research": 0.0,
+            "none": 0.0,
+            "review": 0.0,
+            "unclear": 0.0,
+            "multiple": 0.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1246
+      },
+      "label_matches": {
+        "project": true,
+        "existing_goal": true,
+        "request_type": true
+      }
+    },
+    {
+      "id": "unknown-project",
+      "status": "schema_valid",
+      "answers": {
+        "project": {
+          "choice": "none",
+          "confidence": 0.99,
+          "probabilities": {
+            "project:orders": 0.0,
+            "project:secretary": 0.0,
+            "none": 0.99,
+            "project:content": 0.0,
+            "multiple": 0.0,
+            "ambiguous": 0.01
+          }
+        },
+        "existing_goal": {
+          "choice": "none",
+          "confidence": 1.0,
+          "probabilities": {
+            "multiple": 0.0,
+            "task:alert": 0.0,
+            "none": 1.0,
+            "task:video": 0.0,
+            "task:duplicate": 0.0,
+            "ambiguous": 0.0
+          }
+        },
+        "request_type": {
+          "choice": "research",
+          "confidence": 0.99,
+          "probabilities": {
+            "research": 1.0,
+            "unclear": 0.0,
+            "none": 0.0,
+            "implementation": 0.0,
+            "multiple": 0.0,
+            "review": 0.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1241
+      },
+      "label_matches": {
+        "project": true,
+        "existing_goal": true,
+        "request_type": true
+      }
+    },
+    {
+      "id": "ambiguous",
+      "status": "schema_valid",
+      "answers": {
+        "project": {
+          "choice": "ambiguous",
+          "confidence": 0.95,
+          "probabilities": {
+            "project:secretary": 0.0,
+            "none": 0.02,
+            "ambiguous": 0.97,
+            "project:content": 0.0,
+            "project:orders": 0.0,
+            "multiple": 0.01
+          }
+        },
+        "existing_goal": {
+          "choice": "ambiguous",
+          "confidence": 0.74,
+          "probabilities": {
+            "task:alert": 0.0,
+            "none": 0.21,
+            "ambiguous": 0.78,
+            "task:video": 0.01,
+            "task:duplicate": 0.0,
+            "multiple": 0.0
+          }
+        },
+        "request_type": {
+          "choice": "unclear",
+          "confidence": 0.89,
+          "probabilities": {
+            "implementation": 0.06,
+            "research": 0.0,
+            "none": 0.01,
+            "review": 0.0,
+            "unclear": 0.92,
+            "multiple": 0.01
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1234
+      },
+      "label_matches": {
+        "project": true,
+        "existing_goal": true,
+        "request_type": true
+      }
+    },
+    {
+      "id": "multiple-projects",
+      "status": "schema_valid",
+      "answers": {
+        "project": {
+          "choice": "multiple",
+          "confidence": 1.0,
+          "probabilities": {
+            "project:secretary": 0.0,
+            "none": 0.0,
+            "ambiguous": 0.0,
+            "project:content": 0.0,
+            "project:orders": 0.0,
+            "multiple": 1.0
+          }
+        },
+        "existing_goal": {
+          "choice": "multiple",
+          "confidence": 0.99,
+          "probabilities": {
+            "task:alert": 0.0,
+            "none": 0.01,
+            "ambiguous": 0.0,
+            "task:video": 0.0,
+            "task:duplicate": 0.0,
+            "multiple": 0.99
+          }
+        },
+        "request_type": {
+          "choice": "implementation",
+          "confidence": 0.8,
+          "probabilities": {
+            "implementation": 0.84,
+            "unclear": 0.0,
+            "research": 0.0,
+            "review": 0.0,
+            "none": 0.0,
+            "multiple": 0.16
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1245
+      },
+      "label_matches": {
+        "project": true,
+        "existing_goal": true,
+        "request_type": true
+      }
+    },
+    {
+      "id": "not-permission",
+      "status": "schema_valid",
+      "answers": {
+        "project": {
+          "choice": "project:content",
+          "confidence": 1.0,
+          "probabilities": {
+            "project:content": 1.0,
+            "none": 0.0,
+            "project:orders": 0.0,
+            "project:secretary": 0.0,
+            "ambiguous": 0.0,
+            "multiple": 0.0
+          }
+        },
+        "existing_goal": {
+          "choice": "task:video",
+          "confidence": 0.93,
+          "probabilities": {
+            "task:duplicate": 0.0,
+            "none": 0.04,
+            "task:video": 0.94,
+            "task:alert": 0.0,
+            "ambiguous": 0.02,
+            "multiple": 0.0
+          }
+        },
+        "request_type": {
+          "choice": "review",
+          "confidence": 0.99,
+          "probabilities": {
+            "implementation": 0.0,
+            "unclear": 0.0,
+            "none": 0.0,
+            "review": 1.0,
+            "research": 0.0,
+            "multiple": 0.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1249
+      },
+      "label_matches": {
+        "project": true,
+        "existing_goal": true,
+        "request_type": true
+      }
+    },
+    {
+      "id": "related-not-same",
+      "status": "schema_valid",
+      "answers": {
+        "project": {
+          "choice": "project:secretary",
+          "confidence": 0.99,
+          "probabilities": {
+            "project:content": 0.0,
+            "none": 0.01,
+            "ambiguous": 0.0,
+            "multiple": 0.0,
+            "project:secretary": 0.99,
+            "project:orders": 0.0
+          }
+        },
+        "existing_goal": {
+          "choice": "none",
+          "confidence": 0.96,
+          "probabilities": {
+            "ambiguous": 0.0,
+            "task:video": 0.0,
+            "none": 0.97,
+            "task:duplicate": 0.0,
+            "multiple": 0.0,
+            "task:alert": 0.03
+          }
+        },
+        "request_type": {
+          "choice": "implementation",
+          "confidence": 0.99,
+          "probabilities": {
+            "unclear": 0.0,
+            "none": 0.0,
+            "research": 0.0,
+            "implementation": 1.0,
+            "multiple": 0.0,
+            "review": 0.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1245
+      },
+      "label_matches": {
+        "project": true,
+        "existing_goal": true,
+        "request_type": true
+      }
+    },
+    {
+      "id": "no-work",
+      "status": "schema_valid",
+      "answers": {
+        "project": {
+          "choice": "none",
+          "confidence": 0.81,
+          "probabilities": {
+            "project:content": 0.0,
+            "multiple": 0.0,
+            "project:secretary": 0.02,
+            "project:orders": 0.0,
+            "none": 0.85,
+            "ambiguous": 0.13
+          }
+        },
+        "existing_goal": {
+          "choice": "none",
+          "confidence": 0.99,
+          "probabilities": {
+            "task:duplicate": 0.0,
+            "task:video": 0.0,
+            "task:alert": 0.0,
+            "multiple": 0.0,
+            "none": 1.0,
+            "ambiguous": 0.0
+          }
+        },
+        "request_type": {
+          "choice": "none",
+          "confidence": 0.96,
+          "probabilities": {
+            "multiple": 0.01,
+            "implementation": 0.0,
+            "review": 0.0,
+            "research": 0.0,
+            "none": 0.97,
+            "unclear": 0.02
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1237
+      },
+      "label_matches": {
+        "project": true,
+        "existing_goal": true,
+        "request_type": true
+      }
+    },
+    {
+      "id": "mixed-intent",
+      "status": "schema_valid",
+      "answers": {
+        "project": {
+          "choice": "project:content",
+          "confidence": 0.95,
+          "probabilities": {
+            "none": 0.0,
+            "multiple": 0.04,
+            "ambiguous": 0.0,
+            "project:orders": 0.0,
+            "project:content": 0.96,
+            "project:secretary": 0.0
+          }
+        },
+        "existing_goal": {
+          "choice": "ambiguous",
+          "confidence": 0.54,
+          "probabilities": {
+            "task:duplicate": 0.0,
+            "task:alert": 0.0,
+            "ambiguous": 0.61,
+            "multiple": 0.03,
+            "none": 0.14,
+            "task:video": 0.22
+          }
+        },
+        "request_type": {
+          "choice": "multiple",
+          "confidence": 0.96,
+          "probabilities": {
+            "multiple": 0.97,
+            "implementation": 0.03,
+            "unclear": 0.0,
+            "review": 0.0,
+            "none": 0.0,
+            "research": 0.0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1253
+      },
+      "label_matches": {
+        "project": true,
+        "existing_goal": true,
+        "request_type": true
+      }
+    },
+    {
+      "id": "injection-as-data",
+      "status": "schema_valid",
+      "answers": {
+        "project": {
+          "choice": "project:orders",
+          "confidence": 0.88,
+          "probabilities": {
+            "ambiguous": 0.0,
+            "multiple": 0.0,
+            "project:content": 0.0,
+            "project:orders": 0.9,
+            "none": 0.1,
+            "project:secretary": 0.0
+          }
+        },
+        "existing_goal": {
+          "choice": "task:duplicate",
+          "confidence": 0.69,
+          "probabilities": {
+            "ambiguous": 0.11,
+            "task:video": 0.0,
+            "multiple": 0.01,
+            "task:alert": 0.0,
+            "none": 0.14,
+            "task:duplicate": 0.74
+          }
+        },
+        "request_type": {
+          "choice": "review",
+          "confidence": 0.63,
+          "probabilities": {
+            "unclear": 0.03,
+            "research": 0.01,
+            "multiple": 0.23,
+            "implementation": 0.02,
+            "review": 0.7,
+            "none": 0.01
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1262
+      },
+      "label_matches": {
+        "project": true,
+        "existing_goal": true,
+        "request_type": true
+      }
+    }
+  ]
+}

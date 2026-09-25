@@ -196,6 +196,10 @@ require inspection before selecting `--worktree PATH` or declaring `--new-goal`.
 The default `--agent none` lets the current agent continue at the returned path.
 See the [entry and hub integration guide](docs/request-entry.md).
 
+For ambiguous requests, opt in with `--advise jev` to receive project/existing-goal
+and request-type recommendations. Advice preserves rule decisions and is disabled
+with `--apply`. See [data scope, credentials, evaluation and rollback](docs/jev-advice.md).
+
 ## Documentation and contributing
 
 - [Usage guide](docs/usage.md) — command details

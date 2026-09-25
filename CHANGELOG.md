@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add opt-in `request --advise jev` project/existing-goal recommendations with
+  typed request classification; preserve rule decisions and disable advice on apply.
+- Validate bounded Jev responses and verified local task IDs; load credentials
+  from the environment or an owner-only `~/.config/awo/jev.env` without shell evaluation.
+- Add offline Korean evaluation fixtures and document external data scope,
+  manual selection, failure states and rollback.
+
 - Add a work ledger (`awo ledger`): a Claude PostToolUse hook and Codex rollout
   ingestion record which session changed which file in which repository.
 - Add `awo report`: cross-project uncommitted files by owner session, runtime
