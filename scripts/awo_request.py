@@ -200,6 +200,8 @@ def main():
     parser.add_argument('--apply', action='store_true')
     parser.add_argument('--advise', choices=['none', 'jev'], default='none',
                         help='opt in to external candidate advice in preview only')
+    parser.add_argument('--advice-cohort', choices=['production', 'smoke'], default='production',
+                        help='separate synthetic/smoke observations from real work')
     args = parser.parse_args()
     projects = registry()
     matches = resolve(args.text, projects, args.project)

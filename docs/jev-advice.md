@@ -189,3 +189,83 @@ live 출력에는 실제 answers/usage와 문항별 `label_matches`가 있다. �
 총 7.802초, 스키마 12/12 통과, project/existing_goal/request_type 각 12/12 기대 라벨 일치.
 이는 문제를 확인하고 수정한 뒤 **같은 탐색 샘플**로 다시 확인한 결과다.
 독립 holdout 정확도나 자동 실행 가능성의 증거로 해석하지 않는다.
+
+## 1주 제한운영과 로컬 관측
+
+이 기능은 서버나 예약을 설치하지 않는다. 운영 담당자가
+`~/.awo/jev-trial/config.json`을 준비한 경우에만 기간 내 `--advise jev` 결과를
+`~/.awo/jev-trial/events.jsonl`에 append-only로 기록한다. 설정 스키마는 아래 두 필드뿐이다.
+각 시간에는 UTC `Z` 또는 명시적 UTC offset이 필요하며, 시작은 포함·종료는 제외한다.
+
+```json
+{
+  "starts_at": "2026-09-25T09:00:00Z",
+  "ends_at": "2026-10-02T09:00:00Z"
+}
+```
+
+위 시작 시간은 예시다. root가 실제 제한운영 시작 시각을 넣어 설치한다. 설정 파일이
+없으면 종전 opt-in 동작을 그대로 유지하고 기록하지 않는다. 기본 `--advise none`은
+trial 설정·키를 읽거나 API를 호출하지 않는다. 설정이 있으면 시작 전·만료 후에는
+API 호출을 막고 `trial_not_started/trial_expired`를 반환한다. 잘못된 설정도 호출을 막는다.
+후보 Git 검사 사이에 기간이 끝나는지도 API 호출 직전에 다시 확인한다.
+만료가 요청 도중 발생하면 결과 기록을 생략하고 `trial_window_changed`로 표시한다.
+기간을 자동 연장하거나 만료된 파일을 지워 예전 동작으로 되돌리지 않는다.
+
+애매한 프로젝트나 기존 목표에만 `--advise jev`를 명시한다. 정확한 규칙이 있거나
+apply인 경우 모델 호출은 하지 않으며, 활성 trial에서는 이 생략 결과도 기록한다.
+이 기능이 자동 실행·추가 외부 호출·사용 확대 권한을 부여하지 않는다.
+
+```bash
+# 실제 업무: 기본 cohort=production
+./bin/awo request '메시지 누락 문제 이어서 검토해줘' --goal '알림 문제 검토' --advise jev
+
+# 공개 합성 연결 확인: 실제 업무와 분리
+./bin/awo request '공개 합성 예제 문장' --advise jev --advice-cohort smoke
+
+./bin/awo jev-trial status --json
+./bin/awo jev-trial report --json
+
+# 실제 총괄 판단을 마친 뒤 반환된 event_id로 명시 기록
+./bin/awo jev-trial feedback EVENT_ID --result accepted --json
+./bin/awo jev-trial feedback EVENT_ID --result corrected --critical-misroute --json
+./bin/awo jev-trial feedback EVENT_ID --result uncertain --json
+```
+
+`accepted`는 총괄이 후보를 검토하고 채택한 경우, `corrected`는 수정한 경우,
+`uncertain`은 검토했으나 판단이 끝나지 않은 경우다. 실행 여부나 사용자 승인을
+자동 추론해 채택 처리하지 않는다. 정상 추천 응답(`suggested/shadow_advisory`)을
+받은 event만 피드백할 수 있다. 실패·API 생략에는 채택 피드백을 붙이지 않는다.
+동일 event의 피드백은 추가 기록하되 파일 순서상 최신 값을 집계한다.
+기간이 끝난 뒤에도 기존 결과에 대한 명시 피드백은 가능하다.
+
+이벤트에는 UUID `event_id`, UTC timestamp, cohort, status/reason, 고정 모델,
+`api_called`, `api_latency_ms`, 알려진 `input_tokens`, 불투명 `selection_ids`만 저장한다.
+selection ID는 이벤트별로 다르며 프로젝트 이름·목표 ID 원문을 기록하지 않는다.
+요청문·goal·로컬 경로·키·후보 본문·확률 분포는 저장하지 않는다.
+API 시간은 provider 호출을 감싼 단조 시계 측정으로, 후보 Git 검사와 후속 검증/기록 시간을
+제외한다. `api_called=true`는 호출을 시도했다는 뜻이며 서버 수신·과금을 보장하지 않는다.
+실패한 호출도 지연 표본에 포함하고, 응답 사용량을 검증하지 못하면 tokens는 null이다.
+
+기록 파일은 0600 일반 파일로 열고, symlink를 거부하며 flock으로 append를 직렬화한다.
+기록 실패 시 AWO action과 추천은 유지하며 `advisory.trial.status=unavailable`,
+`reason=record_failed`를 표시한다. 이 경우 보고서가 해당 요청을 셀 수 없으므로
+운영 담당자가 실패를 별도로 확인해야 한다. 실패 로그를 다른 위치에 자동 저장하지 않는다.
+기록 실패 후 자동 재시도도 하지 않는다. 일부 쓰기나 손상된 JSONL은 report가 오류로
+표시하고 조용히 누락시키지 않는다. 16 MiB를 넘는 저널은 `journal_limit`로 보고를 중단한다.
+
+report는 설정 기간의 production/smoke를 **각각** 집계한다. 실제 API 시도·정상 추천 응답·
+실패·호출 생략, 검토됨/미검토/채택/정정/불확실/중대오판과 알려진 token 합계를 제공한다.
+정상 응답 후 후보 재검증이 실패한 경우도 `live_failures`에 포함한다.
+미검토 수는 정상 추천 응답 중 피드백 없는 수다. 중대오판 0은 관측된 최신 피드백에
+표시가 없다는 뜻이지 미검토 결과가 옳다는 뜻이 아니다. p50/p95는 관측 표본의
+nearest-rank이며 표본 0이면 null이다. 데이터가 없으면 `insufficient_data`, 검토가 있더라도
+`exploratory_only`이고, `sufficiency/quality=unknown`을 유지한다. 정확도 비율을 생성하지 않는다.
+`tests/evaluate_jev.py`의 합성 provider 평가 자료는 이 업무 저널에 자동 합산하지 않는다.
+
+제한운영 종료 시 `jev-trial report --json`과 총괄 피드백을 근거로 사람이 검토한다.
+자동 실행이나 확대는 별도 승인 사항이다. 즉시 중지하려면 추천 플래그를 사용하지 않는다.
+config/journal을 자동 삭제하지 않으며 만료 설정을 유지해 호출 차단 상태를 보존한다.
+최초 기능으로 코드 롤백하려면 trial 추가 커밋만 `git revert <trial-commit>`한다.
+이때 만료 차단도 제거되어 명시적 opt-in API 기능이 남으므로, 제한운영 중단에는 우선
+`--advise jev` 사용을 중지해야 한다. 사용자 설정·키·관측 기록은 revert로 삭제하지 않는다.

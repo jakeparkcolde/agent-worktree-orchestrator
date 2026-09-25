@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import stat
+import time
 import urllib.error
 import urllib.request
 
@@ -223,6 +224,24 @@ def validate_response(response, payload):
 
 
 def advise(args, projects, report):
+    """Optional trial wrapper; no configuration/key access for default requests."""
+    if args.advise != 'jev':
+        return _advise(args, projects, report)
+    import awo_jev_trial as trial
+    window = trial.trial_state()
+    if window['status'] == 'not_configured':
+        return _advise(args, projects, report)
+    if window['status'] != 'active':
+        reason = window.get('reason', 'trial_' + window['status'])
+        return status('unavailable' if window['status'] == 'unavailable' else 'disabled', reason,
+                      trial={'status': 'not_recorded', 'reason': reason})
+    metrics = {'api_called': False, 'api_latency_ms': None, 'input_tokens': None}
+    result = _advise(args, projects, report, metrics, window)
+    result['trial'] = trial.record(result, metrics, window, getattr(args, 'advice_cohort', 'production'))
+    return result
+
+
+def _advise(args, projects, report, metrics=None, window=None):
     """A pure supplement: report/args are never mutated, even on failures."""
     from awo_request import normalize
     if args.advise != 'jev':
@@ -250,12 +269,27 @@ def advise(args, projects, report):
         # Do not expose tasks if the supervisor already chose new work/a path.
         payload = build_payload(args.text, args.goal, public_projects,
                                 public_tasks if need_task else {}, need_project, need_task)
+        if window is not None:
+            from awo_jev_trial import same_active_window
+            if not same_active_window(window):
+                raise AdviceError('trial_window_changed')
         key = load_key()
         if key in json.dumps(payload, ensure_ascii=False):
             raise AdviceError('sensitive_input')
+        if window is not None and not same_active_window(window):
+            raise AdviceError('trial_window_changed')
         source = 'live'
-        response = call_jev(payload, key)
+        started = time.perf_counter()
+        if metrics is not None:
+            metrics['api_called'] = True
+        try:
+            response = call_jev(payload, key)
+        finally:
+            if metrics is not None:
+                metrics['api_latency_ms'] = round((time.perf_counter() - started) * 1000, 3)
         answers, usage = validate_response(response, payload)
+        if metrics is not None:
+            metrics['input_tokens'] = usage['input_tokens']
         if catalog(projects, keys) != snapshot:
             raise AdviceError('stale_candidates')
         project_choice = answers.get('project', {}).get('choice')

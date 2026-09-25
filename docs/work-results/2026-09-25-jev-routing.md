@@ -118,3 +118,79 @@ AWO_PROJECTS_FILE은 /Users/koldeumaegmini/agent-worktree-orchestrator/projects.
 진행하고 공개 합성 예제를 사용하세요. 추천은 항상 advisory이며 action을 변경하지 않습니다.
 후보 재검증 후 수동 --project/--goal/--worktree 선택 절차와 apply 경계를 확인하세요.
 ```
+
+## 제한운영 관측 추가 — 2026-09-26
+
+사용자는 1주 제한사용과 1주 뒤 보고를 승인했다. 같은 작업 공간에서 `c043a4a`를
+이어 최소 로컬 관측 기능만 추가했다. 실제 API/키 파일/운영 설정/자동예약/main/push/merge는
+워커 범위가 아니다. 추가 worker/worktree나 위키 구현도 없다.
+
+- `scripts/awo_jev_trial.py`와 `awo jev-trial status/report/feedback` 추가.
+- root가 설치하는 `~/.awo/jev-trial/config.json`의 `[starts_at, ends_at)` 기간에서만
+  명시적 `--advise jev` 결과를 `events.jsonl`에 append-only로 남긴다.
+- 기본 none은 설정/키/네트워크 접근이 없고, 설정 없음은 종전 동작 그대로다.
+  설정이 있으면 기간 전·후/잘못된 설정은 API를 차단한다. 만료 설정 자동 제거/연장 없음.
+- UUID event_id, 시각, 상태/사유, 고정 모델, API 시도 여부, API 구간 지연,
+  검증된 input_tokens와 이벤트별 불투명 selection_ids만 기록한다.
+  원문·goal·경로·키·후보본문은 저장하지 않는다. 기록 실패는 기존 action과 추천을
+  유지하면서 `trial.unavailable/record_failed`로 표시한다.
+- 실제 총괄 확인 뒤 명시 feedback만 반영한다. 중복 feedback은 append하며 최신 값으로 집계.
+  production/smoke를 분리하고 표본 지연 p50/p95, 성공/실패/미검토/정정/중대오판을 보고한다.
+  데이터 0은 표본부족이고, 데이터가 있어도 sufficiency/quality는 unknown이다.
+  정확도 비율이나 자동 사용 확대 판정을 만들지 않는다.
+- 모든 추가 검증은 임시 trial 디렉터리, mock 시계/키/API를 사용한다. 실제 운영 파일을
+  읽거나 수정하지 않았다. 기존 추천 테스트도 trial 경로를 임시 디렉터리로 격리했다.
+
+root가 설치할 정확한 설정 스키마(두 필드만 허용, timezone 필수):
+
+```json
+{
+  "starts_at": "2026-09-25T09:00:00Z",
+  "ends_at": "2026-10-02T09:00:00Z"
+}
+```
+
+`starts_at`은 예시이므로 실제 시작 시각은 root가 정한다. `ends_at`은 사용자 승인 보고 시각과
+맞춘 값이다. `+09:00` 등 명시적 offset도 허용한다. 운영 디렉터리/설정 설치는 root 담당이며
+이 워커는 생성하지 않았다. 합성 연결에는 `--advice-cohort smoke`를 붙인다.
+
+```bash
+./bin/awo jev-trial status --json
+./bin/awo jev-trial report --json
+./bin/awo jev-trial feedback EVENT_ID --result accepted --json
+./bin/awo jev-trial feedback EVENT_ID --result corrected --critical-misroute --json
+./bin/awo jev-trial feedback EVENT_ID --result uncertain --json
+```
+
+### 보고 일정 인계 (root가 보고한 상태)
+
+root는 Orca 자동화 `c02d8a91-09d9-4ff9-af18-d7ce6f46db51`을
+**2026-10-02 18:00 Asia/Seoul (`2026-10-02T09:00:00Z`)**에 예약/활성화했다고 보고했다.
+일정 메타데이터 위치는 `~/.awo/jev-trial/report-schedule-20261002.json`이다.
+워커는 이 자동화/파일을 조회하거나 수정하지 않았다.
+
+root 설명에 따르면 자동화는 main에서 `jev-trial report --json`을 읽고
+`~/.awo/reports/2026-10-02-jev-weekly-review.md`와 Orca 응답/macOS 알림만 생성한 뒤
+자체 비활성화한다. 날짜 precheck로 타년도 실행을 차단한다. 이 예약의 생성/검증은 root의
+별도 작업이며, CLI 코드에 새 자동화 프레임워크나 알림/스케줄러를 추가하지 않았다.
+
+### 추가 검증 / 최종 인계
+
+추가 단위테스트 11건에서 기간/만료, 설정 없음, 기본 생략, API 실패, 기록 실패의 action 보존,
+전송문구 비저장, latency 측정, 중복 피드백, 미검토/불확실, cohort 분리, 표본0/지연 백분위,
+저널 손상/symlink, CLI JSON을 확인했다.
+
+- 워커가 먼저 시작한 `make test`: 기존 137건 포함 **148개 Python 테스트 통과**,
+  CLI/설정 파서/Bash 문법 검사 통과. 로그 `/tmp/awo-jev-trial-tests.log`.
+- `make lint`와 `git diff --check` 통과. root 검사 시작 통보 뒤 중복 검사를 추가 실행하지 않았다.
+- 테스트 외 API 호출/사용자 키·운영 config/journal 접근 없음. 새 상주 프로세스 없음.
+- root가 별도로 실행한 `make test`(148건 및 CLI/설정/Bash), `make lint`,
+  `git diff --check`도 exit 0 통과를 보고했다. 로그는 `/tmp/awo-jev-trial-root-tests.log`,
+  `/tmp/awo-jev-trial-root-lint.log`. root는 검사 시작 뒤 소스/시험 해시 변경 없음도 확인했다.
+- 이후 코드/테스트 변경이나 추가 시험 없이 인계 문서만 완성하여 명시 파일을 로컬 커밋한다.
+  운영 승격/활성화/smoke 확인은 root의 다음 단계다.
+
+재개 시 먼저 이 추가 섹션과 `docs/jev-advice.md`의 제한운영 절차를 확인한다.
+root는 최종 diff/로컬 커밋 검토 후 승인 범위에서 병합·push하고, 운영 config를 설치하며,
+이미 예약된 보고가 main의 최종 CLI를 사용하는지 확인한다. 워커가 운영 파일 설치나
+추가 live 호출을 했다고 간주하지 않는다.

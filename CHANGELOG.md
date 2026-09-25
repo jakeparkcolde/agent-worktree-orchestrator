@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add a time-limited local Jev trial journal and explicit feedback/report commands;
+  separate production from smoke, omit request/candidate text and preserve rule actions
+  on recording failures. Configured expiry blocks further provider calls.
+
 - Add opt-in `request --advise jev` project/existing-goal recommendations with
   typed request classification; preserve rule decisions and disable advice on apply.
 - Validate bounded Jev responses and verified local task IDs; load credentials

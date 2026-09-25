@@ -11,6 +11,8 @@ Usage:
   awo status <project>
   awo start <project> <task-name> [agent] [goal] [--worktree PATH] [--new-session]
   awo request <text> [--project KEY] [--goal GOAL] [--task NAME] [--advise none|jev] [--apply]
+  awo jev-trial status|report [--json]
+  awo jev-trial feedback EVENT_ID --result accepted|corrected|uncertain [--critical-misroute] [--json]
   awo finish [repo-path]
   awo audit <project> [--json]
   awo watch <project> [--json] [--notify] [--sessions]
@@ -47,6 +49,10 @@ case "$cmd" in
   request)
     shift
     exec python3 "$ROOT/scripts/awo_request.py" "$@"
+    ;;
+  jev-trial)
+    shift
+    exec python3 "$ROOT/scripts/awo_jev_trial.py" "$@"
     ;;
   finish)
     shift

@@ -6,6 +6,7 @@ out="$("$ROOT/bin/awo" help)"
 printf "%s" "$out" | grep -q "Agent Worktree Orchestrator"
 printf "%s" "$out" | grep -q "awo cleanup"
 printf "%s" "$out" | grep -q "awo terminals"
+printf "%s" "$out" | grep -q "awo jev-trial"
 # Execute without Bash's fallback for files missing a valid shebang.
 python3 - "$ROOT" <<'PYTHON'
 import json

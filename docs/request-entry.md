@@ -11,6 +11,13 @@
 변경하지 않으며 `--apply`와 함께 사용하면 추천 호출을 생략한다.
 키·전송 범위·상태·총괄 확인 및 롤백은 [Jev 추천 안내](jev-advice.md)를 따른다.
 
+제한운영 기간에도 애매한 프로젝트/기존 목표에만 명시적으로 추천을 요청한다.
+명확한 요청과 apply는 API를 호출하지 않는다. 총괄은 실제 후보를 검토한 뒤
+반환된 `advisory.trial.event_id`에 `awo jev-trial feedback EVENT_ID --result
+accepted|corrected|uncertain`으로 판단을 기록한다. 추천을 자동 채택하지 않는다.
+합성 연결 테스트에는 `--advice-cohort smoke`를 붙인다. 기간 만료 후에는 추천 호출이
+차단되며 자동 실행·기간 연장·사용 확대 권한은 생기지 않는다.
+
 ## 등록과 호출
 
 기존 `projects.yaml` 형식을 유지하며 `aliases`는 `|`로 나눈 문자열이다.

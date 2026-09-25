@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 import awo_advice as advice
 import awo_request as request
+import awo_jev_trial as trial
 import test_request
 
 
@@ -134,6 +135,7 @@ class AdviceRoutingTests(unittest.TestCase):
         if key is None:
             env.pop('TYPESAFE_API_KEY')
         with patch.dict(os.environ, env, clear=True), patch.object(sys, 'argv', ['awo request', text, *args]), \
+                patch.object(trial, 'trial_directory', return_value=self.root / '.awo/jev-trial'), \
                 patch.object(advice, 'call_jev', side_effect=response or (lambda p, k: replay(p))) as call, redirect_stdout(stream):
             code = request.main()
         return json.loads(stream.getvalue()), call, code
