@@ -40,6 +40,96 @@ def cell_width(text):
     return sum(0 if unicodedata.combining(c) else 2 if unicodedata.east_asian_width(c) in ('W', 'F') else 1 for c in text)
 
 
+def board_advice(report):
+    """At most three evidence/action pairs, in safety-first order; never act."""
+    projects = report.get('projects', [])
+    suggestions = []
+
+    def suggest(scope, evidence, action):
+        suggestions.append({'scope': scope, 'evidence': evidence, 'action': action})
+
+    known = report.get('session_state') == 'known'
+    checks = []
+    for project in projects:
+        problems = []
+        if project.get('errors'):
+            problems.append(f"조회 오류 {len(project['errors'])}건")
+        if project.get('dispatch_pending'):
+            problems.append('이전 실행 결과 미확인')
+        if any('git_status' in r and r['git_status'] is None and r.get('identity_state') != 'unknown'
+               for r in project.get('tasks', [])):
+            problems.append('일부 Git 상태 조회 실패')
+        if known and any(r.get('path') and r.get('sessions', {}).get('state', 'unknown') == 'unknown'
+                         for r in project.get('tasks', [])):
+            problems.append('일부 세션 조회 미확인')
+        if problems:
+            checks.append(f"{project['project']}: {' · '.join(problems)}")
+    if checks or not known:
+        evidence = '' if known else '전체 환경 세션 조회 미확인: 연결 수·복수 작업자 여부를 판단할 수 없습니다. '
+        if checks:
+            evidence += f'조회 범위 {len(checks)}개 프로젝트 확인: ' + ' / '.join(checks[:3])
+            if len(checks) > 3:
+                evidence += f' / 외 {len(checks) - 3}개 프로젝트'
+        scope = '조회 범위' if known else '전체 환경 · 조회 범위' if checks else '전체 환경'
+        action = '--details로 실패 원인과 기존 실행을 확인하세요. 재실행 전 연결 상태를 확인하세요.'
+        if not known:
+            action += ' Orca 목록 조회를 먼저 확인하고 연결 수에 따른 보관 판단은 보류하세요.'
+        suggest(scope, evidence.strip(), action)
+
+    if known:
+        by_path = {}
+        multiple = dict(report.get('multiple_agents', {}))
+        for project in projects:
+            for row in project.get('tasks', []):
+                if row.get('path'):
+                    by_path.setdefault(row['path'], project['project'])
+                    handles = {t.get('handle') for t in connected(row) if t.get('handle')}
+                    if len(handles) > 1:
+                        multiple.setdefault(row['path'], len(handles))
+        entries = sorted(((path, count) for path, count in multiple.items()
+                          if isinstance(count, int) and count >= 2), key=lambda item: (-item[1], item[0]))
+        if entries:
+            outside = sum(path not in by_path for path, _ in entries)
+            scope = ('조회 범위' if not outside else '전체 환경 · 조회 범위 밖 (프로젝트 미확인)'
+                     if outside == len(entries) else '전체 환경 · 조회 범위 안팎')
+            examples = ' · '.join(f"{by_path.get(path, '범위 밖 프로젝트 미확인')} {count}개"
+                                  for path, count in entries[:3])
+            if len(entries) > 3:
+                examples += f' · 외 {len(entries) - 3}곳'
+            suggest(scope, f'같은 폴더에 복수 작업자 연결 {len(entries)}곳: {examples}.',
+                    '각 창의 목표와 수정 파일 중복을 확인하고 담당을 구분하세요. 연결은 실행 여부의 증거가 아닙니다.')
+
+    failures = []
+    for project in projects:
+        count = sum(r.get('identity_state') == 'unknown' for r in project.get('tasks', []))
+        if count:
+            failures.append((project['project'], count))
+    if failures:
+        failures.sort(key=lambda item: (-item[1], item[0]))
+        examples = ' · '.join(f'{name} {count}개' for name, count in failures[:3])
+        if len(failures) > 3:
+            examples += f' · 외 {len(failures) - 3}개 프로젝트'
+        suggest('조회 범위', f'작업폴더 연결 검증 실패 {sum(count for _, count in failures)}개: {examples}.',
+                '--details의 경로·브랜치를 실제 폴더와 대조하세요. 기존 ID를 다른 폴더에 자동 연결하지 마세요.')
+    total = report.get('observed_agent_sessions')
+    if known and isinstance(total, int) and total > 3:
+        suggest('전체 환경', f'연결된 작업자 {total}개로 권장 수 3을 넘습니다.',
+                '오늘 집중할 작업 1개를 직접 고르세요. 나머지는 다음 행동을 기록한 뒤 보관을 검토하되 안전 조건은 별도로 확인하세요.')
+    for project in projects:
+        rows = project.get('tasks', [])
+        count = sum(known and section(r) == '열린 작업' and (not (r.get('next') or '').strip() or r.get('next') in AUTO_NEXT)
+                    for r in rows)
+        if count:
+            suggest(project['project'], f'연결된 창이 있는 작업 {count}개에 사용자가 기록한 다음 행동이 없습니다.',
+                    '각 작업에서 다음에 할 일을 한 줄씩 기록하세요.')
+    for project in projects:
+        count = sum(not r.get('id') and section(r) != '지시 거점' for r in project.get('tasks', []))
+        if count:
+            suggest(project['project'], f'목표가 미등록인 작업폴더 {count}개.',
+                    '실제 목표를 확인한 뒤 task import로 등록하세요. 폴더명만으로 목표를 정하지 마세요.')
+    return suggestions[:3]
+
+
 def wrap(text, width, indent='', continuation=None):
     """Wrap even long Korean words by terminal cells, without external packages."""
     continuation = indent if continuation is None else continuation
@@ -165,4 +255,11 @@ def render_board(report, details=False, width=80):
     if not details:
         add()
         add('상세 ID·경로: --details · 기본 정리 미검사 (안전 판정 아님) · 정리 검사: --cleanup --details')
+    advice = board_advice(report)
+    if advice:
+        add()
+        add('지금 할 만한 일')
+        for item in advice:
+            add(f"{item['scope']} · {item['evidence']}", '  - ', '    ')
+            add(item['action'], '    ')
     return '\n'.join(lines)
