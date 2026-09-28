@@ -523,6 +523,7 @@ def main():
     b = sub.add_parser('board', help='전체 작업판 (읽기 전용)')
     b.add_argument('--project')
     b.add_argument('--details', action='store_true', help='긴 ID·경로·정리 안내도 표시')
+    b.add_argument('--include-done', action='store_true', help='텍스트에 완료 작업 포함 (JSON은 항상 전체 목록)')
     b.add_argument('--json', action='store_true')
     b.add_argument('--cleanup', action='store_true', help='기존 audit 안전 판정도 상세 조회 (느릴 수 있음)')
     t = sub.add_parser('task', help='작업 기록과 인계')
@@ -585,7 +586,8 @@ def main():
         if args.command == 'board' and not args.json:
             from awo_board import render_board
             from shutil import get_terminal_size
-            print(render_board(result, details=args.details, width=get_terminal_size((80, 24)).columns))
+            print(render_board(result, details=args.details, width=get_terminal_size((80, 24)).columns,
+                               include_done=args.include_done))
         else:
             print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0

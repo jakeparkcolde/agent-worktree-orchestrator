@@ -96,7 +96,7 @@ class PlanningTests(unittest.TestCase):
         self.assertEqual(row['recorded_state'], '완료')
         self.assertEqual(row['state'], '확인필요')
         self.assertEqual(section(row), '완료')
-        text = render_board(report, width=120)
+        text = render_board(report, width=120, include_done=True)
         self.assertIn('완료 (1)', text)
         self.assertNotIn('예정 (', text)
         self.assertIn('폴더 연결 검증 실패', text)

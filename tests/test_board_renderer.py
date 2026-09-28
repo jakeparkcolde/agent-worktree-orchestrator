@@ -51,7 +51,7 @@ class BoardRendererTests(unittest.TestCase):
         self.assertEqual(section(complete), '완료')
         self.assertEqual(section(scheduled), '예정')
         self.assertEqual(section(idea), '나중에')
-        text = render_board(report(complete, scheduled, idea), width=120)
+        text = render_board(report(complete, scheduled, idea), width=120, include_done=True)
         self.assertIn('완료 (1)', text)
         self.assertIn('예정 (1)', text)
         self.assertIn('Git 상태 조회 미확인', text)
@@ -212,12 +212,43 @@ class BoardRendererTests(unittest.TestCase):
         self.assertEqual(source, before)
 
     def test_json_with_details_remains_original_contract(self):
-        source = report(task())
-        stream = io.StringIO()
-        with patch.object(awo_lifecycle, 'board', return_value=source), patch.object(
-                sys, 'argv', ['awo_lifecycle', 'board', '--project', 'app', '--details', '--json']), patch('sys.stdout', stream):
-            self.assertEqual(awo_lifecycle.main(), 0)
-        self.assertEqual(json.loads(stream.getvalue()), source)
+        source = report(task(state='완료'))
+        for options in ([], ['--include-done']):
+            stream = io.StringIO()
+            with patch.object(awo_lifecycle, 'board', return_value=source), patch.object(
+                    sys, 'argv', ['awo_lifecycle', 'board', '--project', 'app', '--details', '--json', *options]), patch('sys.stdout', stream):
+                self.assertEqual(awo_lifecycle.main(), 0)
+            self.assertEqual(json.loads(stream.getvalue()), source)
+
+    def test_hidden_done_retains_counts_and_connection_risks_without_next_advice(self):
+        terms = [{'handle': str(i), 'agentIdentity': 'codex', 'connected': True} for i in range(2)]
+        source = report(task(goal='완료 작업 고유 제목', recorded_state='완료', state='확인필요',
+                             identity_state='unknown', next='',
+                             sessions={'state': 'present', 'terminals': terms}))
+        source.update(observed_agent_sessions=2, multiple_agents={'/repo/work/alerts': 2})
+        before = copy.deepcopy(source)
+        for details in (False, True):
+            text = render_board(source, details=details, width=120)
+            self.assertNotIn('완료 작업 고유 제목', text)
+            self.assertNotIn('완료 (1)', text)
+            self.assertIn('완료 1개 숨김', text)
+            self.assertIn('--include-done', text)
+            self.assertIn('숨긴 완료의 연결 확인', text)
+            self.assertIn('연결된 agent 2개', text)
+            self.assertIn('복수 agent 연결', text)
+            self.assertIn('작업폴더 연결 검증 실패 1개', text)
+        self.assertNotIn('다음 행동이 없습니다', str(board_advice(source)))
+        self.assertIn('완료 작업 고유 제목', render_board(source, include_done=True))
+        self.assertEqual(source, before)
+
+    def test_cli_include_done_changes_only_text_visibility(self):
+        source = report(task(goal='숨길 완료 제목', state='완료'))
+        for options, visible in (([], False), (['--details'], False), (['--include-done'], True)):
+            stream = io.StringIO()
+            with patch.object(awo_lifecycle, 'board', return_value=source), patch.object(
+                    sys, 'argv', ['awo_lifecycle', 'board', *options]), patch('sys.stdout', stream):
+                self.assertEqual(awo_lifecycle.main(), 0)
+            self.assertEqual('숨길 완료 제목' in stream.getvalue(), visible)
 
     def test_compact_repetition_preserves_every_task_and_user_next(self):
         source = report(task(goal='첫 작업', next='기록과 실제 상태를 확인하세요.'),

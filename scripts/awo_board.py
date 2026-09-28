@@ -154,7 +154,7 @@ def wrap(text, width, indent='', continuation=None):
     return lines
 
 
-def render_board(report, details=False, width=80):
+def render_board(report, details=False, width=80, include_done=False):
     width = max(20, width)
     lines = []
     def add(text='', indent='', continuation=None):
@@ -175,6 +175,19 @@ def render_board(report, details=False, width=80):
     add(f"조회 범위 · 프로젝트 {len(projects)}개 · 실제 폴더 {folders}개" + (' (일부 미확인)' if incomplete else '') + f' · 연결된 agent {scoped}개')
     add(f"전체 환경 · 연결된 agent {total if total is not None else '미확인'}개 (프로젝트 필터 밖 포함)")
     add('창 연결은 실행 중이라는 뜻이 아닙니다. 정리 안전성은 별도 검사합니다.')
+    hidden = [(p, r) for p in projects for r in p.get('tasks', [])
+              if not include_done and section(r) == '완료']
+    if hidden:
+        add(f'완료 {len(hidden)}개 숨김 · 전체 작업 보기: --include-done (JSON은 항상 완료 포함)')
+        attention = {}
+        for project, row in hidden:
+            session = row.get('sessions', {})
+            if (row.get('identity_state') == 'unknown' or ('git_status' in row and row['git_status'] is None)
+                    or row.get('path') and session.get('state', 'unknown') != 'absent'):
+                attention[project['project']] = attention.get(project['project'], 0) + 1
+        if attention:
+            add('숨긴 완료의 연결 확인 · ' + ' · '.join(f'{key} {count}개' for key, count in attention.items())
+                + ': 연결된 창 또는 조회 미확인 항목이 있습니다. --include-done --details로 확인하세요.')
     if total is not None and total > 3:
         add('전체 환경 안내 · 연결된 agent가 권장 동시 작업 수 3을 넘습니다.')
     multiple = report.get('multiple_agents', {})
@@ -187,6 +200,8 @@ def render_board(report, details=False, width=80):
         for warning in dict.fromkeys(report.get('warnings', [])):
             add('전체 환경/조회 기록 안내 · ' + warning)
     for name in GROUPS:
+        if name == '완료' and not include_done:
+            continue
         items = [(p, r) for p in projects for r in p.get('tasks', []) if section(r) == name]
         if not items:
             continue

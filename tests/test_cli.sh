@@ -22,6 +22,7 @@ assert "--details" in result.stdout
 result = subprocess.run([str(root / "bin/awo"), "board", "--help"],
                         check=True, capture_output=True, text=True)
 assert "--details" in result.stdout and "--json" in result.stdout
+assert "--include-done" in result.stdout
 result = subprocess.run([str(root / "bin/awo"), "task", "plan", "--help"],
                         check=True, capture_output=True, text=True)
 assert "--date" in result.stdout and "--clear-date" in result.stdout
