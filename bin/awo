@@ -8,7 +8,7 @@ usage() {
 Agent Worktree Orchestrator
 
 Usage:
-  awo board [--project KEY] [--cleanup] [--json]
+  awo board [--project KEY] [--details] [--cleanup] [--json]
   awo task add|show|import|bind|start|park|resume|done|reconcile ...
   awo resource list|register|release|check|suggest ...
   awo doctor

@@ -18,6 +18,10 @@ root = Path(sys.argv[1])
 result = subprocess.run([str(root / "bin/awo"), "help"],
                         check=True, capture_output=True, text=True)
 assert "awo cleanup" in result.stdout
+assert "--details" in result.stdout
+result = subprocess.run([str(root / "bin/awo"), "board", "--help"],
+                        check=True, capture_output=True, text=True)
+assert "--details" in result.stdout and "--json" in result.stdout
 result = subprocess.run([str(root / "scripts/orca-repo-id.py"), str(root)],
                         input=json.dumps({"path": str(root), "id": "demo-id"}),
                         check=True, capture_output=True, text=True)

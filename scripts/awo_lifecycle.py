@@ -21,11 +21,6 @@ from awo_start import validate_worktree, orca, payload, dispatch
 from awo_state import folder, now, event, project_lock, pending, acknowledge
 
 STATES = ('할일', '진행', '확인필요', '보관', '완료')
-SESSION_LABELS = {'present': '기존 창 있음', 'absent': '등록된 창 없음', 'unknown': '미확인'}
-CLEANUP_LABELS = {'UNKNOWN': '미검사 (안전 판정 아님)', 'BLOCKED': '정리 불가',
-    'SAFE_CLEANUP': '정리 후보 (적용 시 재검사)', 'ACTIVE': '최근 작업', 'ACTIVE_IDLE': '최근 활동 보호',
-    'ARCHIVE': '산출물 보존 필요', 'REVIEW': '수동 검토', 'SYNCED': '동등 내용 확인 필요',
-    'STALE': '장기 미활동 검토', 'MERGE': '미병합 변경 보존'}
 
 
 def projects():
@@ -479,6 +474,7 @@ def main():
     sub = parser.add_subparsers(dest='command', required=True)
     b = sub.add_parser('board', help='전체 작업판 (읽기 전용)')
     b.add_argument('--project')
+    b.add_argument('--details', action='store_true', help='긴 ID·경로·정리 안내도 표시')
     b.add_argument('--json', action='store_true')
     b.add_argument('--cleanup', action='store_true', help='기존 audit 안전 판정도 상세 조회 (느릴 수 있음)')
     t = sub.add_parser('task', help='작업 기록과 인계')
@@ -522,22 +518,9 @@ def main():
     try:
         result = board(args.project, args.cleanup) if args.command == 'board' else task_command(args) if args.command == 'task' else resource_command(args)
         if args.command == 'board' and not args.json:
-            print(f"실제 연결 작업 세션: {result['observed_agent_sessions'] if result['observed_agent_sessions'] is not None else '미확인'}개")
-            for group in result['projects']:
-                print(f"프로젝트 {group['project']} · 작업폴더 {group.get('physical_worktrees', '?')}개")
-                for err in group['errors']:
-                    print('  확인필요: ' + err)
-                for row in group['tasks']:
-                    print(f"  {row.get('id') or '미등록'} | {row['state']} | {row['goal']}")
-                    if row.get('related_to'):
-                        print(f"    관련: {row['related_to']} · {row['related_goal']}")
-                    print(f"    {row.get('path') or '작업폴더 없음'} · 다음: {row.get('next') or '다음 행동을 기록하세요.'}")
-                    if row.get('path'):
-                        print(f"    세션: {SESSION_LABELS[row['sessions']['state']]} · 정리: {CLEANUP_LABELS.get(row['cleanup']['classification'], '확인필요')} · {row['cleanup_command']}")
-                if group.get('dispatch_pending'):
-                    print('  중단된 실행 미확인: 재실행 차단, task reconcile 필요')
-            for warning in result['warnings']:
-                print('안내: ' + warning)
+            from awo_board import render_board
+            from shutil import get_terminal_size
+            print(render_board(result, details=args.details, width=get_terminal_size((80, 24)).columns))
         else:
             print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
