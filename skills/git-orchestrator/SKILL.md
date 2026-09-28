@@ -31,11 +31,24 @@ that unregistered worktrees have different goals. Do not infer identity from a
 branch name alone. Respect clarification and blocked actions without retrying
 creation blindly. Check for overlapping edits before a new independent task.
 
-Use the default `--agent none` to continue work in the current session. Start another
-agent only when requested/authorized. After application, check action, returned
-path and base and continue in that worktree under its repository instructions.
+Default `--agent none` selects/creates a worktree only. It does not dispatch a worker
+or authorize implementation by the coordinator. Explicitly dispatch an authorized
+independent worker and verify its exact path under the repository instructions.
+For registered work use `task resume PROJECT ID --agent codex|claude` to verify and
+switch to one existing worker, or create one only when no terminal exists.
+Unknown or multiple workers block creation.
 A hub stays on its main branch. Do not modify hub instructions automatically;
 prepare the exact integration snippet for the user when needed.
+
+Explicit user intent needs no AWO prefix. In an existing task, “another topic later”
+means `task add PROJECT GOAL --related-to CURRENT_ID` only; “open a separate task”
+means add then `task start PROJECT NEW_ID --agent codex|claude`; “return to the old
+topic” means resume its exact ID. A new idea alone never creates a window.
+Related goals remain independent IDs, states, files and sessions. Jev similarity
+must never override explicit separate-topic intent. Relationships do not imply Git
+stacking or permission to copy unfinished changes or the full conversation.
+Prepare these rules only in AWO docs/templates; do not modify external AGENTS files
+or claim existing sessions have automatically reloaded them.
 
 ## New worktree decision
 
@@ -181,3 +194,13 @@ git push --force
 ```
 
 If state is ambiguous, preserve the worktree and report why.
+
+## Explicit lifecycle intent
+
+“This needs more fixing” continues the same task ID. “Set this aside” means save
+next action and validation, then use explicit `task park --close` from the
+coordinator only when the user requested closing and preservation/process checks
+are complete. Default park never closes. Close requires one exact connected agent,
+official tui-idle and screen verification, durable handoff, then revalidation.
+Busy, unknown, multiple, draft-bearing or self terminals remain open. Do not send
+retirement prompts, auto-commit, kill processes or delete worktrees for this flow.

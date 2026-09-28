@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Dispatch work to an independent Orca terminal, never the caller's session."""
 import argparse
-import fcntl
 import json
 from pathlib import Path
 import re
@@ -53,7 +52,7 @@ def validate_worktree(primary, target):
     return branch
 
 
-def dispatch(args):
+def dispatch(args, locked=False):
     if args.new_session and not args.worktree:
         raise RuntimeError('--new-session requires --worktree')
     primary = Path(config(args.project, 'path')).expanduser().resolve()
@@ -66,16 +65,45 @@ def dispatch(args):
     if not task or task.startswith('.'):
         raise RuntimeError('Task name must contain a valid non-hidden name')
     git(primary, 'check-ref-format', '--branch', task)
-    # Serialize AWO launches across all worktrees of the project.
-    common = Path(git(primary, 'rev-parse', '--git-common-dir'))
-    if not common.is_absolute():
-        common = primary / common
-    with open(common / 'awo-dispatch.lock', 'a') as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        return launch(args, primary, base, agent, task)
+    from awo_state import project_lock, dispatch_locked
+    if locked:
+        return dispatch_locked(args, primary, base, agent, task, launch)
+    with project_lock(primary):
+        from awo_request import load_tasks, task_lock, normalize, identity
+        from awo_state import folder, event, acknowledge
+        from awo_audit import save
+        file = folder(primary) / 'tasks.json'
+        with task_lock(file):
+            tasks = load_tasks(file)
+            matches = [t for t in tasks if args.goal and normalize(t['goal']) == normalize(args.goal)]
+            if any(t.get('path') and t['path'] != args.worktree for t in matches):
+                raise RuntimeError('동일 목표가 이미 등록됐습니다. task resume 또는 정확한 --worktree를 사용하세요.')
+            for t in tasks:
+                if t.get('path') and t['path'] == args.worktree:
+                    if t['identity'] != identity(t['path']) or t['branch'] != 'refs/heads/' + validate_worktree(primary, Path(t['path'])):
+                        raise RuntimeError('기존 작업 identity 변경: 재연결 차단')
+                    if args.goal and normalize(t['goal']) != normalize(args.goal):
+                        raise RuntimeError('기존 경로가 다른 목표에 연결되어 있습니다.')
+            result, code = dispatch_locked(args, primary, base, agent, task, launch)
+            receipt = result.get('awo_dispatch', {})
+            path = receipt.get('path')
+            if path and args.goal and receipt.get('state') != 'unverified':
+                entry = next((t for t in tasks if t.get('path') == path), None)
+                if entry is None:
+                    entry = next((t for t in matches if not t.get('path')), None)
+                if entry is None:
+                    entry = {}
+                    tasks.append(entry)
+                entry.update(goal=args.goal, path=path, branch='refs/heads/' + validate_worktree(primary, Path(path)),
+                             identity=identity(path), project=args.project, dispatch=receipt,
+                             state='진행' if receipt['state'] == 'session_confirmed' else '확인필요')
+                event(entry, 'start')
+                save(file, tasks)
+            acknowledge(primary)
+            return result, code
 
 
-def launch(args, primary, base, agent, task):
+def launch(args, primary, base, agent, task, before_create=lambda: None):
     receipt = {'coordinator_instruction': 'Do not implement in the coordinator session; continue only in the independent worker.', 'state': 'unverified', 'agent': agent, 'reason': '', 'terminal_id': None}
     raw = {}
     if args.worktree:
@@ -88,13 +116,15 @@ def launch(args, primary, base, agent, task):
         known_agent = any(not isinstance(item, dict) or item.get('agentIdentity') for item in items)
         if items and (known_agent or not args.new_session):
             receipt.update(state='existing_terminal', path=str(target), branch=branch,
-                           reason='Existing terminal(s) found; no worker created and no prompt sent')
+                           reason='Existing terminal(s) found; no worker created and no prompt sent',
+                           terminal_ids=[i.get('handle') for i in items if isinstance(i, dict)])
             return {'awo_dispatch': receipt}, 3
         if items:
             receipt['warning'] = 'Existing terminals preserved; user explicitly authorized a separate session despite unknown agent identities'
         if agent not in ('codex', 'claude'):
             raise RuntimeError('Existing-worktree dispatch supports codex or claude only')
         command = shlex.join([agent] + (['--', args.goal] if args.goal else []))
+        before_create()
         try:
             raw = orca('terminal', 'create', '--worktree', 'path:' + str(target), '--command', command)
         except (RuntimeError, subprocess.SubprocessError, OSError):
@@ -110,7 +140,7 @@ def launch(args, primary, base, agent, task):
         if any((gd / n).exists() for n in ('MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'rebase-merge', 'rebase-apply')):
             raise RuntimeError('Git operation in progress in primary checkout')
         rows = records(primary)
-        if any(r.get('branch') == 'refs/heads/' + task for r in rows):
+        if any(r.get('branch', '').removeprefix('refs/heads/').split('/')[-1] == task for r in rows):
             raise RuntimeError('Task worktree already exists; use --worktree PATH')
         if len(rows) >= int(config(args.project, 'max_worktrees', '3')):
             raise RuntimeError('Worktree limit reached')
@@ -126,6 +156,7 @@ def launch(args, primary, base, agent, task):
             argv += ['--agent', agent]
             if args.goal:
                 argv += ['--prompt', args.goal]
+        before_create()
         try:
             raw = orca(*argv)
         except (RuntimeError, subprocess.SubprocessError, OSError):
@@ -157,7 +188,7 @@ def launch(args, primary, base, agent, task):
             return raw, 3
         if agent == 'none':
             receipt.update(path=str(target), branch=branch, state='worktree_only',
-                           reason='Worktree created without an agent terminal; the supervising agent continues in this path')
+                           reason='Worktree created without an agent terminal; 독립 워커 연결이 필요합니다; 거점은 구현하지 않습니다')
             raw['awo_dispatch'] = receipt
             return raw, 0
         startup = result.get('startupTerminal') or {}
@@ -178,7 +209,7 @@ def launch(args, primary, base, agent, task):
                     break
                 if attempt < 5:
                     time.sleep(1)
-            if (observed.get('worktreePath') != str(target) or observed.get('branch') != branch
+            if (observed.get('worktreePath') != str(target) or str(observed.get('branch', '')).removeprefix('refs/heads/') != branch
                     or observed.get('handle') != handle):
                 raise RuntimeError('Terminal worktree identity mismatch')
             if not observed.get('connected') or observed.get('agentIdentity') != agent:

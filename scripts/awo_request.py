@@ -89,14 +89,41 @@ def load_tasks(file):
     if not isinstance(tasks, list) or any(not isinstance(t, dict) or
             not all(k in t for k in ('goal', 'path', 'branch', 'identity')) for t in tasks):
         raise RuntimeError('invalid task metadata; inspect before starting')
+    for task in tasks:
+        if not isinstance(task.get('goal'), str) or not task['goal'].strip():
+            raise RuntimeError('invalid task goal')
+        if task.get('schema_version', 1) != 1:
+            raise RuntimeError('unsupported task schema')
+        task.setdefault('id', 'legacy-' + hashlib.sha256(json.dumps(
+            [task['goal'], task['path'], task['identity']], sort_keys=True).encode()).hexdigest()[:24])
+        if not isinstance(task['id'], str) or not re.fullmatch(r'[a-zA-Z0-9_-]+', task['id']):
+            raise RuntimeError('invalid task ID')
+        if task.get('path') is not None and (not isinstance(task['path'], str) or not Path(task['path']).is_absolute()):
+            raise RuntimeError('invalid task path')
+        if task.get('path') is None:
+            if task['branch'] is not None or task['identity'] is not None:
+                raise RuntimeError('unbound task has invalid identity')
+        elif not isinstance(task['branch'], str) or not isinstance(task['identity'], list):
+            raise RuntimeError('invalid task identity')
+        if task.get('state', '확인필요') not in ('할일', '진행', '확인필요', '보관', '완료'):
+            raise RuntimeError('invalid task state')
+        if not isinstance(task.get('events', []), list) or any(not isinstance(e, dict) for e in task.get('events', [])):
+            raise RuntimeError('invalid task history')
+    if len({t['id'] for t in tasks}) != len(tasks):
+        raise RuntimeError('duplicate task ID')
     return tasks
 
 
 def active_tasks(tasks, rows):
     by_path = {r['worktree']: r for r in rows[1:]}
-    return [t for t in tasks if t['path'] in by_path and
-            t['branch'] == by_path[t['path']].get('branch') and
-            t['identity'] == identity(t['path'])]
+    active = []
+    for task in tasks:
+        try:
+            if task['path'] in by_path and task['branch'] == by_path[task['path']].get('branch') and task['identity'] == identity(task['path']):
+                active.append(task)
+        except (OSError, RuntimeError, subprocess.SubprocessError):
+            continue
+    return active
 
 
 def decide(args, project, rows, tasks):
@@ -149,7 +176,11 @@ def task_lock(file):
 
 
 def execute(args, key, project, path, rows, file):
-    with task_lock(file):
+    from awo_state import project_lock, pending, event, acknowledge
+    from awo_start import dispatch
+    with project_lock(path), task_lock(file):
+        if pending(path):
+            raise RuntimeError("이전 실행 결과 미확인: task reconcile 필요")
         prepared = subprocess.run([str(ROOT / 'scripts/prepare-base.sh'), path, project['base_ref']],
                                   capture_output=True, text=True)
         if prepared.returncode:
@@ -159,17 +190,13 @@ def execute(args, key, project, path, rows, file):
         decision = decide(args, project, rows, tasks)
         if decision['action'] == 'create':
             before = {r['worktree'] for r in rows}
-            p = subprocess.run([str(ROOT / 'bin/awo'), 'start', key, decision['task'],
-                                args.agent, args.goal], capture_output=True, text=True)
-            try:
-                response = json.loads(p.stdout)
-            except ValueError:
-                response = None
-            dispatch = (response or {}).get('awo_dispatch') or {}
-            if isinstance(response, dict) and (response.get('ok') is False or (p.returncode and dispatch)):
-                raise RuntimeError('Orca refused creation: ' + (dispatch.get('reason') or json.dumps(response.get('error'))))
-            if p.returncode or response is None:
-                raise RuntimeError('awo start failed; inspect worktrees before retry: ' + p.stderr.strip())
+            launch_args = argparse.Namespace(project=key, task=decision['task'], agent=args.agent,
+                goal=args.goal, worktree=None, new_session=False)
+            response, code = dispatch(launch_args, locked=True)
+            receipt = response.get('awo_dispatch', {})
+            if code:
+                raise RuntimeError('Orca refused creation: ' + receipt.get('reason', '실행 미확인'))
+            decision['dispatch'] = receipt
             new = [r for r in records(path) if r['worktree'] not in before]
             if len(new) != 1:
                 raise RuntimeError('cannot confirm created path; inspect worktrees before retry')
@@ -181,10 +208,22 @@ def execute(args, key, project, path, rows, file):
         if decision['action'] in ('create', 'reuse'):
             wt = decision['path']
             row = next(r for r in records(path) if r['worktree'] == wt)
-            tasks = [t for t in tasks if t['path'] != wt]
-            tasks.append({'goal': args.goal.strip(), 'path': wt, 'branch': row['branch'],
-                          'identity': identity(wt)})
+            task = next((t for t in tasks if t['path'] == wt), None)
+            if task is None:
+                task = next((t for t in tasks if t['path'] is None and normalize(t['goal']) == normalize(args.goal)), None)
+            if task is None:
+                task = {}
+                tasks.append(task)
+            task.update(goal=args.goal.strip(), path=wt, branch=row['branch'], identity=identity(wt), project=key)
+            if decision['action'] == 'reuse' and args.agent != 'none':
+                launch_args = argparse.Namespace(project=key, task='resume', agent=args.agent,
+                    goal=args.goal, worktree=wt, new_session=False)
+                response, code = dispatch(launch_args, locked=True)
+                decision['dispatch'] = response['awo_dispatch']
+            task['state'] = '진행' if decision.get('dispatch', {}).get('state') == 'session_confirmed' else '확인필요'
+            event(task, 'request', action_result=decision['action'])
             save(file, tasks)
+            acknowledge(path)
         return decision
 
 

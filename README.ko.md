@@ -209,3 +209,8 @@ launchd 스크립트로 주기적 확인을 지원합니다. 검증된 아카이
 ## 라이선스
 
 [MIT](LICENSE)
+
+## CLI 작업 관리
+
+`awo board`, `awo task`, `awo resource`로 작업판·인계·실행 자원을 관리합니다.
+[사용법과 안전 경계](docs/work-lifecycle.md) · [AWO 전용 거점 템플릿](examples/awo-hub/AGENTS.md)

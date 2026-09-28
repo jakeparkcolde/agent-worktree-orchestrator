@@ -49,9 +49,13 @@ This is an operating contract. It does not imply background monitoring by the CL
 
 Use `awo request` and the workflow in `docs/request-entry.md` for hub requests.
 The supervisor supplies a concrete goal, inspects existing work and uses the returned
-path. By default (`--agent none`) the worktree is created without a new terminal and
-the current agent continues there; pass `--agent codex|claude` to dispatch an
-independent worker instead. Do not install hub instructions or infer a goal from a project mention alone.
+path. Default `--agent none` selects/creates a worktree only, without dispatching a
+worker. Keep the coordinator in its checkout and explicitly dispatch an authorized
+independent worker. Never implement in the coordinator as a fallback.
+Do not install hub instructions or infer a goal from a project mention alone.
+Explicit intent does not require an AWO prefix: “later” means task add only,
+“open separately” means related task add then task start, and “return” means
+resume the exact existing task ID. A related task is independent, not Git stacking.
 
 ## Start workflow
 

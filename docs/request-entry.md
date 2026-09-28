@@ -90,15 +90,15 @@ AWO_PROJECTS_FILE=/absolute/path/to/projects.yaml /absolute/path/to/bin/awo \
 생성은 기존 `awo start`를 호출한다. 설정한 `base_ref`를 명시하고 Orca
 `--no-parent`로 생성한다. 한국어 목표의 기본 작업명은 안정적인 해시이며,
 읽기 쉬운 이름을 원하면 `--task`로 ASCII slug를 지정한다.
-`request`는 기본적으로 `--agent none`을 사용해 현재 에이전트가 반환 경로에서
-작업을 계속한다. 별도 에이전트가 필요하고 허용된 경우만 `--agent codex` 또는
-`--agent claude`를 명시한다. 기존 `start`의 기본 에이전트 동작은 유지된다.
-재사용은 새 에이전트를 실행하지 않는다.
+`request`의 기본 `--agent none`은 작업폴더만 선택/생성한다. 거점은 반환 경로로
+이동해 직접 구현하지 않는다. 승인된 독립 워커에 `--agent codex|claude`를 명시한다.
+재사용에서 agent를 명시하면 기존 start의 보수적인 연결 검사를 거친다. 정확한 기존 창으로
+전환하려면 stable ID를 확인하고 `task resume PROJECT ID --agent codex`를 쓴다.
 
 목표 연결은 대상 저장소의 공용 Git 디렉터리 아래 `awo/tasks.json`에만 저장한다.
 예전 경로가 제거되거나 다른 worktree로 바뀌면 연결을 재사용하지 않는다.
-동시 `request --apply`는 저장소별 잠금으로 중복 생성을 막는다. 다른 도구나
-직접 실행한 `awo start`까지 잠그지는 않으므로 동시에 생성하지 않는다.
+`request --apply`, `start`, `task start/resume`는 같은 저장소 잠금을 쓴다.
+생성 결과 미확인은 영속 기록으로 재실행을 차단한다. 직접 Orca 실행은 보호 범위 밖이다.
 Orca가 실패한 뒤에는 기존 경로를 다시 확인한다. 생성된 worktree를 자동 삭제하지 않는다.
 목표에는 비밀이나 고객 본문을 넣지 않는다.
 
@@ -118,7 +118,7 @@ docs/request-entry.md와 skills/git-orchestrator/SKILL.md를 읽는다.
 대상 또는 구체적 목표가 불명확할 때만 질문한다.
 awo request로 기존 목표·worktree·변경 파일을 확인한다.
 동일 목표는 기존 worktree를 재사용한다. 독립 목표만 --apply로 생성한다.
-main은 지시 거점으로 유지하고 실제 코드는 반환된 worktree에서 작업한다.
+main은 배분 거점으로 유지하며, 실제 코드는 정확한 경로에 연결된 독립 워커만 수정한다.
 외부 저장소 작업에는 그 저장소의 AGENTS.md를 적용한다.
 카카오 작업에서는 기존 읽기 전용 검토 규칙과 요청의 범위를 확인한다.
 명시적으로 구현을 요청받은 경우에만 해당 작업 worktree에서 수정한다.
@@ -136,3 +136,26 @@ main은 지시 거점으로 유지하고 실제 코드는 반환된 worktree에�
 기존처럼 origin fetch가 필수다. origin 장애나 origin 대신 다른 원격만 있는
 상태를 로컬 모드로 조용히 대체하지 않는다. 로컬 모드에는 원격 최신성·백업
 보장이 없다. audit/status/finish/cleanup의 원격 전제는 별도로 유지된다.
+
+## 접두어 없는 명시 의도와 관련된 독립 작업
+
+AWO 접두어는 필수가 아니다. 기존 작업 중 사용자가 명시한 의도를 다음처럼 라우팅한다.
+
+- “을지로도 나중에 해보자”: `task add PROJECT '을지로 변화' --related-to 성수동_ID`만 실행.
+- “새 주제로 따로 열어줘”: 관련 task add 후 **새 ID**로 `task start PROJECT ID --agent codex`.
+- “성수동으로 돌아가자”: 정확한 **기존 ID**로 `task resume PROJECT ID --agent codex`.
+
+아이디어 언급만으로 창을 생성하지 않는다. 새 주제를 명시하면 의미 유사성/Jev 추천으로
+기존 목표 재사용으로 뒤집지 않는다. 관계는 같은 프로젝트 stable ID 연결이며 Git parent나
+stacked 작업이 아니다. 기존 미완료 변경/전체 대화를 자동 복사하지 않는다. 기존 작업을
+종료/보관할 필요도 없다. 대상/의도가 불명확한 경우에만 확인한다.
+
+[상세 CLI 안내](work-lifecycle.md)와 [AWO 전용 거점 템플릿](../examples/awo-hub/AGENTS.md)을
+검토 후 수동 설치한다. 기존 프로젝트/전역 지침은 자동 수정하지 않으며 이미 실행 중인
+세션의 자동 reload를 주장하지 않는다.
+
+“이거 더 고치자”는 같은 ID를 유지한다. “여기까지 접어두자”는 next/validation을
+인계하고 명시 승인된 안전 종료 `task park --close`를 거점에서 수행한다. 기본 park는
+닫지 않는다. 실행 중/unknown/복수 세션이나 보존을 확인할 수 없으면 닫지 않는다.
+종료 전 공식 tui-idle/read-screen과 인계 저장 성공, 종료 직전 재검증이 필요하다.
+강제 종료/자동 커밋/프로세스 kill/worktree 삭제로 대신하지 않는다.

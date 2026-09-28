@@ -15,7 +15,7 @@ SCRIPT = Path(__file__).resolve().parent
 
 
 def run(argv, ok=(0,)):
-    p = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env={**os.environ, 'GIT_OPTIONAL_LOCKS': '0'})
+    p = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env={**os.environ, 'GIT_OPTIONAL_LOCKS': '0'}, timeout=15)
     if p.returncode not in ok:
         raise RuntimeError('command failed: ' + ' '.join(argv[:3]))
     return p.stdout.decode('utf-8', 'surrogateescape').rstrip('\n')
@@ -65,6 +65,8 @@ def save(state_path, state):
     try:
         with os.fdopen(fd, 'w') as f:
             json.dump(state, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
         os.replace(name, state_path)
     finally:
         if os.path.exists(name):
@@ -99,7 +101,7 @@ def inspect(path, base, record, primary, meta, now, thresholds):
         equivalent = sum(x.startswith('-') for x in cherry)
         diff = git(path, 'diff', '--no-ext-diff', '--no-textconv', '--name-only', '-z', base, 'HEAD')
         tree_count = len([n for n in diff.split('\0') if n])
-        ancestor = subprocess.run(['git', '-C', path, 'merge-base', '--is-ancestor', head, base], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+        ancestor = subprocess.run(['git', '-C', path, 'merge-base', '--is-ancestor', head, base], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15).returncode == 0
         upstream = git(path, 'rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}', ok=(0, 128))
         unpushed = int(git(path, 'rev-list', '--count', upstream + '..HEAD')) if upstream else None
         fingerprint = hashlib.sha256((head + '\0' + status).encode('utf-8', 'surrogateescape')).hexdigest()
@@ -136,7 +138,7 @@ def inspect(path, base, record, primary, meta, now, thresholds):
         if not upstream and not ancestor:
             row['classification'] = 'BLOCKED'
             reasons.append('no upstream and HEAD is not contained in base')
-    except (RuntimeError, ValueError, OSError, KeyError):
+    except (RuntimeError, ValueError, OSError, KeyError, subprocess.SubprocessError):
         row['classification'] = 'BLOCKED'
         row['reasons'] = ['inspection failed; no cleanup permitted']
     return row
