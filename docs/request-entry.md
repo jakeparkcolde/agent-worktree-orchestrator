@@ -159,3 +159,16 @@ stacked 작업이 아니다. 기존 미완료 변경/전체 대화를 자동 복
 닫지 않는다. 실행 중/unknown/복수 세션이나 보존을 확인할 수 없으면 닫지 않는다.
 종료 전 공식 tui-idle/read-screen과 인계 저장 성공, 종료 직전 재검증이 필요하다.
 강제 종료/자동 커밋/프로세스 kill/worktree 삭제로 대신하지 않는다.
+
+## 계획 및 문맥 추천을 통한 선택
+
+`awo task suggest KEY --goal GOAL --current-task ID --context TEXT`는 로컬 휴리스틱 후보와
+근거만 반환한다. auto 추천은 저장 권한이 아니므로 --apply하려면 명시 intent가 필요하다.
+현재 작업과 입력 목표가 다른 자동 “이어서” 해석은 needs-choice다. 정확한 기존 ID에 명시
+--intent reuse를 선택하거나, 독립 아이디어에 --intent separate/later를 사용한다.
+명확한 사용자 의도는 총괄이 해당 intent로 전달하고 애매할 때만 질문한다.
+
+separate/later --apply는 폴더 없는 아이디어만 저장한다. 동일 요청 재시도는 같은 카드로
+수렴하며 의도적인 새 카드에는 다른 --request-id를 사용한다. 시작은 반환된 ID의 task start다.
+계획 수정은 task plan/update의 --later/--date(KST 날짜)/--next와 대응하는 --clear-*로 한다.
+알림·예약 실행은 없다. 자세한 예제는 [계획·아이디어 안내](work-lifecycle.md)를 따른다.

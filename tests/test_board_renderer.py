@@ -26,6 +26,40 @@ def report(*rows):
 
 
 class BoardRendererTests(unittest.TestCase):
+    def test_tree_siblings_continuations_and_primary_table(self):
+        source = report(task(goal='첫 작업'), task(goal='둘째 작업'))
+        source['projects'].append({'project': 'other', 'physical_worktrees': 1, 'errors': [],
+                                   'tasks': [task(goal='셋째 작업')]})
+        source['projects'][0]['tasks'].append(task(id=None, goal='거점', path='/repo'))
+        text = render_board(source, width=120)
+        self.assertIn('  ├─ app (2)', text)
+        self.assertIn('  │  ├─ 첫 작업', text)
+        self.assertIn('  │  │  다음: 실패 재현', text)
+        self.assertIn('  │  └─ 둘째 작업', text)
+        self.assertIn('  └─ other (1)', text)
+        self.assertIn('     └─ 셋째 작업', text)
+        self.assertIn('프로젝트 | 연결 작업자 | 창', text)
+        for goal in ('첫 작업', '둘째 작업', '셋째 작업'):
+            self.assertEqual(text.count(goal), 1)
+
+    def test_completed_and_scheduled_planning_precedence_with_warnings(self):
+        plan = {'scheduled_for': '2026-01-01', 'timezone': 'Asia/Seoul', 'later': True}
+        complete = task(goal='끝난 작업', recorded_state='완료', state='확인필요',
+                        identity_state='unknown', planning=plan, git_status=None)
+        scheduled = task(goal='예정 작업', planning=plan, git_status=None)
+        idea = task(goal='새 주제', path=None, planning={'later': True}, related_to='old', related_goal='기존 주제')
+        self.assertEqual(section(complete), '완료')
+        self.assertEqual(section(scheduled), '예정')
+        self.assertEqual(section(idea), '나중에')
+        text = render_board(report(complete, scheduled, idea), width=120)
+        self.assertIn('완료 (1)', text)
+        self.assertIn('예정 (1)', text)
+        self.assertIn('Git 상태 조회 미확인', text)
+        self.assertIn('아이디어 카드 · 폴더 없음', text)
+        self.assertIn('관련 목표: 기존 주제', text)
+        for goal in ('끝난 작업', '예정 작업', '새 주제'):
+            self.assertEqual(text.count(goal), 1)
+
     def test_eight_old_paths_do_not_consume_generic_error_slots(self):
         source = report()
         source['projects'] = []
@@ -196,7 +230,7 @@ class BoardRendererTests(unittest.TestCase):
         self.assertEqual(text.count('상태 미기록/확인필요 기록'), 1)
         for goal in ('첫 작업', '둘째 작업', '셋째 작업', '사용자가 남긴 다음 행동'):
             self.assertIn(goal, text)
-        self.assertIn('  - app · 연결 agent 0 / 창 0', text)
+        self.assertIn('app | 0 | 0', text)
         self.assertNotIn('거점 · main', text)
         detail = render_board(source, details=True, width=120)
         self.assertEqual(detail.count('기록과 실제 상태를 확인하세요.'), 2)

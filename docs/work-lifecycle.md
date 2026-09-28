@@ -269,3 +269,85 @@ agent는 **전체 환경**으로 명시하며 경로에서 프로젝트명을 �
 집계한다. 일반 조회 오류·미확인 실행·전체 세션 조회 미확인은 최우선 제안 한 칸으로 묶는다.
 오래된 경로 8개 사례와 여러 프로젝트의 일반 오류/실행 미확인 사례를 실패 재현 후 수정했고,
 순수 시험 13개·CLI 검사·lint가 통과했다. 이번 후속 수정에서 스테이징 영역은 변경하지 않았다.
+
+## 계획 정보와 아이디어 (2026-09-29 추가)
+
+기본 작업판은 **상태 → 프로젝트 → 작업** 트리다. 마지막 형제만 `└─`, 나머지는 `├─`이고
+연속되는 부모 가지는 `│`로 유지한다. 거점은 프로젝트별 연결 작업자/창 수 표로 분리한다.
+모든 작업을 표시하며, `--details`에 정확한 ID·경로·브랜치를 유지한다.
+
+```bash
+awo task add videos '을지로 변화' --related-to CURRENT_ID --later --next '자료 조사'
+awo task import videos '기존 주제' --worktree /exact/path --date 2026-10-03
+awo task plan videos TASK_ID --date 2026-10-04 --next '초안 비교'
+awo task update videos TASK_ID --later --next '다음 회의에서 검토'
+awo task plan videos TASK_ID --clear-date --clear-later --clear-next
+```
+
+`plan`과 `update`는 같은 계획 수정 동작이다. 예정일은 **KST YYYY-MM-DD** 날짜이며
+유효한 달력 날짜만 받는다. 시각/상대 날짜/다른 시간대 표기는 받지 않는다. 과거 날짜도
+기록할 수 있다. `--later`/`--clear-later`, `--date`/`--clear-date`, `--next`/`--clear-next`는
+각각 상호 배타적이다. 지정하지 않은 값과 기존 사용자 메타데이터는 보존한다.
+
+계획은 선택적인 `planning: {later, scheduled_for, timezone: "Asia/Seoul"}` 필드에 저장한다.
+기존 `next`를 그대로 사용하며, 안전 상태/state·identity·경로·브랜치를 계획 수정으로
+바꾸지 않는다. 이벤트는 추가한다. 계획의 제거는 실행/재개/삭제를 뜻하지 않는다.
+계획에 알림·예약 실행·감시 기능은 **없다**. 날짜가 와도 창을 자동으로 만들지 않는다.
+
+분류 우선순위는 거점 → 완료 기록 → 명시 예정일 → 나중에 표시/보관 → 기존 연결 분류다.
+완료 작업의 지난 예정일은 예정 목록에 남지 않는다. 완료가 아닌 명시 예정 작업은
+연결이 끊겨도 **예정에 한 번만** 표시하고 연결/Git 조회 경고를 배지로 붙인다.
+보관 작업은 **나중에**에 표시한다. 명시 예정일이 있으면 예정이 우선한다.
+완료·예정·나중에 분류는 연결 오류를 해결하거나 안전을 인증하는 것이 아니다.
+
+기존 JSON 키/의미는 유지한다. task에 planning이 추가될 수 있고 board의 등록 항목에는
+원래 저장된 상태인 `recorded_state`를 추가한다. 기존 `state`는 조회 오류 시 확인필요가
+되는 동작을 유지한다. 텍스트 분류는 완료 기록을 보존하면서 현재 연결 경고도 보여준다.
+폴더 없는 항목은 **아이디어 카드 · 폴더 없음**으로 표시하며 related_to의 관련 목표를 보여준다.
+관계는 Git parent/stacking이나 기존 파일/대화 복사 권한이 아니다.
+
+## 문맥 기반 추천 CLI
+
+```bash
+# 읽기 전용 후보: 외부 LLM/네트워크/추가 세션 조회 없음
+awo task suggest videos --goal '을지로 변화' --current-task CURRENT_ID \
+  --context '비슷하지만 새 주제로 따로 열어줘'
+# 사용자의 명시 의도를 확인한 저장. 폴더/창은 만들지 않음.
+awo task suggest videos --goal '을지로 변화' --current-task CURRENT_ID \
+  --intent separate --next '자료 조사' --apply
+# 나중에 할 아이디어만 저장
+awo task suggest videos --goal '종로 변화' --current-task CURRENT_ID \
+  --intent later --date 2026-10-05 --apply
+# 정확한 기존 ID 선택; 창 연결은 별도 단계
+awo task suggest videos --goal '성수동 보완' --current-task SEONGSU_ID --intent reuse --apply
+# 생성/세션 시작은 기존 안전 경로로만
+awo task start videos SAVED_ID --agent codex
+```
+
+추천 값은 `reuse`, `separate`, `later`, `needs-choice`와 근거다. 명시 `--intent`가 문맥
+단서보다 우선한다. 기본 auto는 좁은 표현 규칙을 사용하는 **휴리스틱 후보**이며 일반적인
+자연어 이해가 아니다. 부정/질문/충돌하는 단서는 needs-choice다. 표현/주제 유사도나 같은
+목표 문구만으로 재사용하지 않는다. 현재 작업 A와 목표 B가 다르면 auto의 “이어서” 단서도
+needs-choice로 남는다. 명시 `--intent reuse`에는 정확한 `--current-task`가 필요하다.
+
+미리보기는 읽기 전용이다. **auto와 --apply 조합은 저장을 거부한다.** 이미 사용자의 의도가
+분명하면 에이전트는 해당 명시 intent를 전달한다. 애매한 경우에만 선택을 확인한다.
+needs-choice는 적용해도 저장하지 않는다. separate/later 적용은 새 ID의 폴더 없는 카드만
+저장하고 current-task를 related_to로 연결한다. reuse 적용은 기존 ID만 선택하며 계획
+옵션을 명시한 경우에만 그 계획을 갱신한다. 어느 추천도 세션 생성/전환/전송을 수행하지 않는다.
+
+### 저장 재시도와 의도적인 새 카드
+
+동일 프로젝트의 같은 목표·현재 ID·명시 intent는 기본 재시도 키를 공유한다. 같은 저장
+요청을 반복하면 기존 카드를 반환하고 새 이벤트/파일/창을 만들지 않는다. 같은 키에 계획
+옵션을 바꾸어 보내면 조용히 덮어쓰지 않고 거부한다. 수정에는 `task plan`을 사용한다.
+같은 주제라도 의도적으로 별도 새 카드를 원하면 다른 `--request-id`를 지정한다.
+
+```bash
+awo task suggest videos --goal '을지로 변화' --current-task CURRENT_ID \
+  --intent separate --request-id euljiro-version-2 --apply
+```
+
+이 명령 자체를 재시도하면 같은 카드를 반환한다. 명시 키는 영문/숫자로 시작하는 최대 80자
+식별자다. 키는 프로젝트 내에서 유지한다. 아이디어를 실행하려고 동일 제목을 다시 저장하기
+보다는 반환된 정확한 ID에 `task start`를 사용한다. 기존 세션의 자동 지침 로딩/감시는 없다.

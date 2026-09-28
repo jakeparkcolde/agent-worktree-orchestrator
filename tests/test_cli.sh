@@ -22,6 +22,12 @@ assert "--details" in result.stdout
 result = subprocess.run([str(root / "bin/awo"), "board", "--help"],
                         check=True, capture_output=True, text=True)
 assert "--details" in result.stdout and "--json" in result.stdout
+result = subprocess.run([str(root / "bin/awo"), "task", "plan", "--help"],
+                        check=True, capture_output=True, text=True)
+assert "--date" in result.stdout and "--clear-date" in result.stdout
+result = subprocess.run([str(root / "bin/awo"), "task", "suggest", "--help"],
+                        check=True, capture_output=True, text=True)
+assert "--intent" in result.stdout and "--request-id" in result.stdout
 result = subprocess.run([str(root / "scripts/orca-repo-id.py"), str(root)],
                         input=json.dumps({"path": str(root), "id": "demo-id"}),
                         check=True, capture_output=True, text=True)

@@ -19,6 +19,7 @@ from awo_report import project_list, projects_file
 from awo_request import identity, load_tasks, task_lock
 from awo_start import validate_worktree, orca, payload, dispatch
 from awo_state import folder, now, event, project_lock, pending, acknowledge
+from awo_planning import valid_date, planning_requested, update_planning, recommend, idea_request
 
 STATES = ('할일', '진행', '확인필요', '보관', '완료')
 
@@ -109,6 +110,7 @@ def board(selected=None, include_cleanup=False):
             claimed = set()
             for task in tasks:
                 item = copy.deepcopy(task)
+                item['recorded_state'] = task.get('state')
                 if task.get('related_to'):
                     related = next((t for t in tasks if t['id'] == task['related_to']), None)
                     item['related_goal'] = related['goal'] if related else '관계 기록 미확인'
@@ -295,8 +297,48 @@ def task_command(args):
     if args.action == 'show':
         tasks = read_tasks(repo)
         return select(tasks, args.id) if args.id else tasks
+    if args.action == 'suggest':
+        preview = recommend(read_tasks(repo), args.goal, args.current_task, args.intent, args.context)
+        if not args.apply:
+            return preview
+        if args.intent == 'auto':
+            raise RuntimeError('문맥 추천은 휴리스틱 후보입니다. 저장하려면 확인한 --intent를 명시하세요.')
+        if preview['recommendation'] == 'needs-choice':
+            return preview
     with project_lock(repo), task_lock(file):
         tasks = read_tasks(repo)
+        if args.action == 'suggest':
+            result = recommend(tasks, args.goal, args.current_task, args.intent, args.context)
+            if result['recommendation'] == 'needs-choice':
+                return result  # applying uncertainty never saves or starts anything
+            if result['recommendation'] == 'reuse':
+                task = select(tasks, result['target_id'])
+                if planning_requested(args):
+                    update_planning(task, args)
+                    event(task, 'plan')
+                    audit.save(file, tasks)
+            else:
+                request = idea_request(args)
+                previous = next((t for t in tasks if t.get('idea_request', {}).get('key') == request['key']), None)
+                if previous:
+                    if previous['idea_request']['payload'] != request['payload']:
+                        raise RuntimeError('같은 요청 키의 내용이 다릅니다. 기존 카드 계획은 task plan으로 수정하거나 새 카드에 다른 --request-id를 쓰세요.')
+                    result.update(mode='APPLY', task=previous, deduplicated=True,
+                                  notice='동일 저장 요청의 기존 아이디어를 반환했습니다. 새 폴더/창을 만들지 않았습니다.')
+                    return result
+                task = event({'project': args.project, 'goal': args.goal.strip(), 'path': None,
+                              'branch': None, 'identity': None, 'state': '할일', 'next': '',
+                              'idea_request': request}, 'idea')
+                if result['related_to']:
+                    task['related_to'] = result['related_to']
+                update_planning(task, args)
+                if result['recommendation'] == 'later':
+                    task.setdefault('planning', {})['later'] = True
+                tasks.append(task)
+                audit.save(file, tasks)
+            result.update(mode='APPLY', task=task)
+            result['notice'] = '기록/선택만 완료했습니다. 폴더·창 시작/재개는 task start로 별도 요청하세요.'
+            return result
         if args.action in ('add', 'import'):
             if not args.goal.strip():
                 raise RuntimeError('구체적인 목표가 필요합니다.')
@@ -314,6 +356,12 @@ def task_command(args):
         else:
             task = select(tasks, args.id)
             task.setdefault('project', args.project)
+        if args.action in ('add', 'import', 'plan', 'update'):
+            if args.action in ('plan', 'update') and not planning_requested(args):
+                raise RuntimeError('계획 또는 다음 행동 변경 옵션을 지정하세요.')
+            update_planning(task, args)
+            if planning_requested(args):
+                event(task, 'plan')
         if args.action == 'bind':
             bind(repo, tasks, task, args.worktree)
         if args.action in ('park', 'done'):
@@ -479,18 +527,35 @@ def main():
     b.add_argument('--cleanup', action='store_true', help='기존 audit 안전 판정도 상세 조회 (느릴 수 있음)')
     t = sub.add_parser('task', help='작업 기록과 인계')
     ts = t.add_subparsers(dest='action', required=True)
-    for name in ('add', 'import', 'show', 'bind', 'park', 'start', 'resume', 'done', 'reconcile'):
+    for name in ('add', 'import', 'show', 'bind', 'plan', 'update', 'suggest', 'park', 'start', 'resume', 'done', 'reconcile'):
         p = ts.add_parser(name)
         p.add_argument('project')
         if name in ('add', 'import'):
             p.add_argument('goal')
             p.add_argument('--related-to', help='같은 프로젝트의 관련 stable ID (Git parent 아님)')
+        elif name == 'suggest':
+            p.add_argument('--goal', required=True)
+            p.add_argument('--current-task')
+            p.add_argument('--intent', choices=['auto', 'reuse', 'separate', 'later'], default='auto')
+            p.add_argument('--context', default='', help='현재 요청의 문맥; 명시 요청이 불명확하면 needs-choice')
+            p.add_argument('--request-id', help='아이디어 재시도 키; 같은 키는 중복 저장하지 않음, 별도 새 카드에는 다른 키')
+            p.add_argument('--apply', action='store_true', help='추천을 재검사한 뒤 아이디어/계획만 저장 (창 생성 없음)')
         else:
             p.add_argument('id', nargs='?' if name == 'show' else None)
         if name in ('import', 'bind'):
             p.add_argument('--worktree', required=True)
-        if name in ('add', 'import', 'park', 'done'):
+        if name in ('park', 'done'):
             p.add_argument('--next')
+        if name in ('add', 'import', 'plan', 'update', 'suggest'):
+            later = p.add_mutually_exclusive_group()
+            later.add_argument('--later', action='store_true', help='나중에 검토할 표시 (안전 상태 변경 없음)')
+            later.add_argument('--clear-later', action='store_true')
+            scheduled = p.add_mutually_exclusive_group()
+            scheduled.add_argument('--date', type=valid_date, help='KST 예정일 YYYY-MM-DD (알림 없음)')
+            scheduled.add_argument('--clear-date', action='store_true')
+            next_action = p.add_mutually_exclusive_group()
+            next_action.add_argument('--next')
+            next_action.add_argument('--clear-next', action='store_true')
         if name in ('park', 'done'):
             p.add_argument('--validation')
         if name in ('park', 'done', 'reconcile'):

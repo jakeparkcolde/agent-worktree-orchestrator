@@ -2,7 +2,7 @@
 from pathlib import PurePath
 import unicodedata
 
-GROUPS = ('열린 작업', '이어갈 작업', '아이디어', '보관·완료', '확인할 연결', '지시 거점')
+GROUPS = ('예정', '열린 작업', '이어갈 작업', '아이디어', '나중에', '완료', '확인할 연결', '지시 거점')
 AUTO_NEXT = {'기록과 실제 상태를 확인하세요.', '목표를 확인한 뒤 task import로 명시 등록하세요.',
              '삭제/교체된 경로와 기록을 확인하세요.'}
 SESSION_LABELS = {'present': '기존 창 있음', 'absent': '등록된 창 없음', 'unknown': '미확인'}
@@ -20,6 +20,14 @@ def connected(row):
 def section(row):
     if not row.get('id') and row.get('goal') == '거점':
         return '지시 거점'
+    recorded_state = row.get('recorded_state', row.get('state'))
+    if recorded_state == '완료':
+        return '완료'
+    planning = row.get('planning', {})
+    if planning.get('scheduled_for'):
+        return '예정'
+    if planning.get('later') or recorded_state == '보관':
+        return '나중에'
     if row.get('identity_state') == 'unknown' or ('git_status' in row and row['git_status'] is None):
         return '확인할 연결'
     if row.get('path'):
@@ -31,8 +39,6 @@ def section(row):
             return '확인할 연결'
         if connected(row):
             return '열린 작업'
-    if row.get('state') in ('보관', '완료'):
-        return '보관·완료'
     return '이어갈 작업' if row.get('path') else '아이디어'
 
 
@@ -194,26 +200,53 @@ def render_board(report, details=False, width=80):
                 hints.append('폴더·세션 연결을 확인하세요.' if name == '확인할 연결' else '미등록 목표와 기록은 확인 후 등록·갱신하세요.')
             if hints:
                 add(' '.join(hints), '  ')
-        for project, row in items:
-            if name == '지시 거점' and not details:
+        previous_project = None
+        project_keys = list(dict.fromkeys(p['project'] for p, _ in items))
+        if name == '지시 거점':
+            add('프로젝트 | 연결 작업자 | 창', '  ')
+            add('---------|-------------|---', '  ')
+        for index, (project, row) in enumerate(items):
+            if name == '지시 거점':
                 session = row.get('sessions', {})
-                count = f"연결 agent {len(connected(row))} / 창 {len(session.get('terminals', []))}" if session.get('state') in ('present', 'absent') else '세션 미확인'
-                add(f"{project['project']} · {count}", '  - ', '    ')
+                count = f"{len(connected(row))} | {len(session.get('terminals', []))}" if session.get('state') in ('present', 'absent') else '미확인 | 미확인'
+                add(f"{project['project']} | {count}", '  ')
+                if details:
+                    for title, value in [('ID', row.get('id') or '미등록'), ('경로', row.get('path')),
+                                         ('브랜치', row.get('branch')), ('다음', row.get('next')),
+                                         ('정리', row.get('cleanup_command'))]:
+                        if value:
+                            add(f'{title}: {value}', '    ')
                 continue
+            if previous_project != project['project']:
+                project_count = sum(p['project'] == project['project'] for p, _ in items)
+                last_project = project['project'] == project_keys[-1]
+                project_stem = '     ' if last_project else '  │  '
+                add(f"{project['project']} ({project_count})", '  └─ ' if last_project else '  ├─ ', project_stem)
+                previous_project = project['project']
+            last_task = index + 1 == len(items) or items[index + 1][0]['project'] != project['project']
+            task_prefix = project_stem + ('└─ ' if last_task else '├─ ')
+            body_prefix = project_stem + ('   ' if last_task else '│  ')
             registered = bool(row.get('id'))
             label = row.get('goal') or '목표 미기록'
             if not registered:
                 label = ('거점' if name == '지시 거점' else '미등록 작업') + ' · ' + PurePath(row.get('path') or '').name
             badges = []
+            planning = row.get('planning', {})
+            if planning.get('scheduled_for'):
+                badges.append('예정일 ' + planning['scheduled_for'] + ' (KST)')
+            if not row.get('path'):
+                badges.append('아이디어 카드 · 폴더 없음')
             if row.get('identity_state') == 'unknown':
                 badges.append('폴더 연결 검증 실패')
+            elif 'git_status' in row and row['git_status'] is None:
+                badges.append('Git 상태 조회 미확인')
             if row.get('path'):
                 ses = row.get('sessions', {})
                 if ses.get('state', 'unknown') == 'unknown':
                     badges.append('세션 조회 미확인')
                 elif ses.get('state') == 'present':
                     badges.append(f"연결 agent {len(connected(row))} / 창 {len(ses.get('terminals', []))}")
-                    if name == '확인할 연결':
+                    if len(ses.get('terminals', [])) != 1 or len(connected(row)) != 1:
                         badges.append('작업자 연결 확인 필요')
                 elif details or name != '이어갈 작업':
                     badges.append('연결된 창 없음')
@@ -223,26 +256,26 @@ def render_board(report, details=False, width=80):
                     badges.append(str(state))
                 elif details:
                     badges.append('상태 미기록/확인필요 기록')
-            add(f"{project['project']} · {label}", '  - ', '    ')
+            add(label, task_prefix, body_prefix)
             if badges:
-                add(' · '.join(badges), '    ')
+                add(' · '.join(badges), body_prefix)
             if row.get('related_to'):
-                add('관련 목표: ' + row.get('related_goal', '관계 기록 미확인'), '    ')
+                add('관련 목표: ' + row.get('related_goal', '관계 기록 미확인'), body_prefix)
             if name != '지시 거점' and (details or row.get('next') and row['next'] not in AUTO_NEXT):
                 next_action = row.get('next') or ('목표 확인 후 task import로 등록' if not registered else '다음 행동 미기록')
-                add('다음: ' + next_action, '    ')
+                add('다음: ' + next_action, body_prefix)
             if details:
                 if name == '지시 거점' and row.get('next'):
                     add('다음: ' + row['next'], '    ')
-                add('ID: ' + (row.get('id') or '미등록'), '    ')
-                add('경로: ' + (row.get('path') or '작업폴더 없음'), '    ')
-                add('브랜치: ' + (row.get('branch') or '미연결'), '    ')
+                add('ID: ' + (row.get('id') or '미등록'), body_prefix)
+                add('경로: ' + (row.get('path') or '작업폴더 없음'), body_prefix)
+                add('브랜치: ' + (row.get('branch') or '미연결'), body_prefix)
                 if row.get('related_to'):
-                    add('관련 ID: ' + row['related_to'], '    ')
+                    add('관련 ID: ' + row['related_to'], body_prefix)
                 if row.get('path'):
-                    add('정리: ' + CLEANUP_LABELS.get(row.get('cleanup', {}).get('classification'), '미확인'), '    ')
+                    add('정리: ' + CLEANUP_LABELS.get(row.get('cleanup', {}).get('classification'), '미확인'), body_prefix)
                     if row.get('cleanup_command'):
-                        add(row['cleanup_command'], '    ')
+                        add(row['cleanup_command'], body_prefix)
     for project in projects:
         problems = list(dict.fromkeys(project.get('errors', [])))
         if project.get('dispatch_pending'):

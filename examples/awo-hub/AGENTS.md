@@ -39,3 +39,20 @@ AWO라는 접두어 없이도 사용자가 명확히 요청하면 위 절차를 
 Orca가 draft 필드를 제공하지 않으면 미전송 입력의 부재를 추정하지 않는다.
 실제 화면에서 입력이 없음을 확인한 호출자만 park --close에 --input-checked를 추가한다.
 부분 화면/실제 draft 존재는 이 옵션으로 우회하지 않는다.
+
+## 계획과 문맥 추천
+
+작업판은 상태→프로젝트→작업 트리와 거점 표로 읽는다. 계획 변경은 `task plan/update`로
+`--later`, `--date YYYY-MM-DD`(KST), `--next`를 지정한다. 제거는 --clear-later/--clear-date/
+--clear-next다. 계획은 안전 상태나 identity를 바꾸지 않고, 날짜 알림/자동 실행을 하지 않는다.
+폴더 없는 아이디어의 related_to는 관련 목표일 뿐 Git parent나 대화 복사 허가가 아니다.
+
+문맥이 필요하면 `task suggest KEY --goal GOAL --current-task ID --context TEXT`로 후보와
+근거를 확인한다. auto는 휴리스틱이며 쓰기 권한이 아니다. 사용자의 의도가 명확하면
+--intent reuse|separate|later를 명시해 --apply한다. 불명확할 때만 질문한다.
+현재 A와 새 목표 B가 다른데 “이어서”라고만 하면 재사용을 확정하지 않는다.
+reuse는 정확한 current-task ID를 명시해야 한다. 명시 separate는 유사도가 높아도 별도 카드다.
+separate/later 적용은 아이디어만 저장한다. 창/폴더 시작은 반환된 ID로 기존 task start를 쓴다.
+동일 저장 재시도는 기본 키로 중복 방지한다. 의도적인 별도 새 카드에는 다른 --request-id를
+사용하고 재시도에는 같은 키/옵션을 유지한다. 기존 카드 변경에는 task plan을 쓴다.
+다른 프로젝트/전역 지침 자동 설치나 이미 실행 중인 세션의 자동 로딩/감시를 주장하지 않는다.

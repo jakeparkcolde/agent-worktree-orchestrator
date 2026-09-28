@@ -92,6 +92,13 @@ def load_tasks(file):
     for task in tasks:
         if not isinstance(task.get('goal'), str) or not task['goal'].strip():
             raise RuntimeError('invalid task goal')
+        if 'planning' in task:
+            from awo_planning import validate_planning
+            validate_planning(task['planning'])
+        if 'idea_request' in task and (not isinstance(task['idea_request'], dict)
+                or not isinstance(task['idea_request'].get('key'), str)
+                or not isinstance(task['idea_request'].get('payload'), dict)):
+            raise RuntimeError('invalid idea retry metadata')
         if task.get('schema_version', 1) != 1:
             raise RuntimeError('unsupported task schema')
         task.setdefault('id', 'legacy-' + hashlib.sha256(json.dumps(
