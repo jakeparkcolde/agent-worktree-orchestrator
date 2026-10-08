@@ -9,6 +9,22 @@
 운영 적용은 새 CLI 배포이며 다른 작업의 종료/삭제나 일괄 identity 복구를 뜻하지 않는다.
 별도 disk watcher의 고정 release 경로는 이번 기능의 배포 대상이 아니다.
 
+## 배포 결과
+
+- 구현 커밋 `c68aa4464403bca333a6922d3781689650ada6c0` 생성.
+- primary main으로 fast-forward 병합하고 origin/main push 성공.
+  `git ls-remote`로 원격 main과 로컬 main의 같은 SHA를 확인했다.
+- 기존 미푸시 main 커밋 6개도 함께 원격에 반영했다.
+- 운영 primary CLI에서 `board --project awo --json` 오류 없음,
+  해당 worktree의 `task diagnose`/`task finish` PREVIEW 및 세 명령 help 통과.
+- 운영 `.git/awo` 파일의 SHA-256/mtime이 조회 전후 모두 동일함을 확인했다.
+- 최종 lint 통과. 기능 worktree clean, primary는 원래 있던 untracked만 유지.
+- 새 서버/예약 설치나 재시작은 필요하지 않았다. 허브와 기존 report job은
+  primary CLI를 직접 참조하므로 다음 호출부터 병합된 구현을 실행한다.
+- worktree 4개와 현재 세션을 보존했다. 다른 작업을 완료 처리하거나 삭제하지 않았다.
+
+이하 내용은 배포 전 검증 시점의 기록이며 위 후속 승인/배포 결과가 최신 상태다.
+
 ## 목표와 승인 범위
 
 사용자의 “이어서 작업 진행”에 따라 기존 work-lifecycle 워커의 미커밋

@@ -5,6 +5,13 @@
 반영을 진행한다. 재개 시 git log/status와 원격 HEAD로 실행 결과를 확인한다.
 다른 작업의 일괄 종료/삭제/복구는 수행하지 않는다.
 
+배포 완료: 구현 커밋 c68aa4464403bca333a6922d3781689650ada6c0을 main에
+fast-forward 병합하고 origin/main push 및 원격 SHA 일치 확인했다.
+운영 primary CLI board/diagnose/finish 미리보기와 명령 help 통과,
+운영 metadata SHA/mtime 불변 확인. 기존 report/허브는 primary CLI 직접 사용.
+남은 배포 작업은 없다. 현재 작업폴더/세션과 다른 작업들은 보존했다.
+이하 기록은 최초 검증 완료 시점으로, 위 배포 결과가 우선한다.
+
 AWO work-lifecycle의 완료 처리·연결 복구 구현 검증을 마쳤다.
 같은 워커 경로 `/Users/koldeumaegmini/orca/workspaces/agent-worktree-orchestrator/work-lifecycle`
 에서 `docs/work-results/2026-10-08-completion-repair.md`와 git status/diff를 먼저 읽는다.
