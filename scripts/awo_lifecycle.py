@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""작업판, 할일과 보관/재개. Git 파일과 프로세스는 변경하지 않습니다."""
+"""작업판과 명시적 작업 수명주기 관리. 변경 동작은 개별 옵션으로 요청합니다."""
 import argparse
 import copy
 import json
@@ -62,7 +62,7 @@ def verify(repo, task):
         raise RuntimeError('작업폴더가 없습니다. awo request --project KEY --goal 기록된목표 로 미리보기 후 --apply로 명시 시작하거나 task bind로 기존 폴더를 연결하세요.')
     branch = validate_worktree(Path(repo), Path(task['path']))
     if task['identity'] != identity(task['path']) or task['branch'] != 'refs/heads/' + branch:
-        raise RuntimeError('작업폴더 경로/브랜치 identity가 바뀌었습니다. 자동 재연결하지 않습니다.')
+        raise RuntimeError('작업폴더 경로/브랜치 identity가 바뀌었습니다. task diagnose / task repair로 확인하세요.')
     return branch
 
 
@@ -119,10 +119,23 @@ def board(selected=None, include_cleanup=False):
                 if task.get('path'):
                     claimed.add(task['path'])
                     try:
+                        from awo_completion import removed_confirmed
+                        if removed_confirmed(repo, task):
+                            item.update(identity_state='removed', lifecycle_label='완료·정리됨')
+                            group['tasks'].append(item)
+                            continue
                         verify(repo, task)
                         item['identity_state'] = 'verified'
                     except (RuntimeError, OSError, subprocess.SubprocessError):
                         item.update(identity_state='unknown', state='확인필요', next='삭제/교체된 경로와 기록을 확인하세요.')
+                if task.get('state') == '보관':
+                    item['lifecycle_label'] = '보류·재개가능' if item.get('identity_state') == 'verified' else '보류·연결확인'
+                if task.get('finish') and task.get('path'):
+                    from awo_completion import finish_preview
+                    preview = finish_preview(argparse.Namespace(project=key), repo, task,
+                                             sessions=snapshot, cleanup_rows=cleanup)
+                    item['lifecycle_label'] = preview['label']
+                    item['remaining_steps'] = preview['remaining']
                 group['tasks'].append(item)
             for row in rows:
                 if row['worktree'] not in claimed:
@@ -131,7 +144,7 @@ def board(selected=None, include_cleanup=False):
                         'next': '목표를 확인한 뒤 task import로 명시 등록하세요.'})
             for item in group['tasks']:
                 path = item.get('path')
-                if not path:
+                if not path or item.get('identity_state') == 'removed':
                     continue
                 item['sessions'] = sessions_at(snapshot, path)
                 item['cleanup'] = cleanup.get(path, {'classification': 'UNKNOWN', 'reasons': ['미검사/unknown: 안전 판정이 아닙니다. board --cleanup으로 검사하세요.']})
@@ -179,7 +192,7 @@ def bind(repo, tasks, task, path):
     if any(t is not task and t.get('path') == path for t in tasks):
         raise RuntimeError('다른 작업에 연결된 경로입니다.')
     if task.get('identity') and (task['identity'] != identity(path) or task['branch'] != 'refs/heads/' + branch):
-        raise RuntimeError('기존 identity와 다릅니다. 기록을 덮어쓰지 않습니다.')
+        raise RuntimeError('기존 identity와 다릅니다. task diagnose / task repair로 확인하세요.')
     task.update(path=path, branch='refs/heads/' + branch, identity=identity(path))
     event(task, 'bind', path=path)
 
@@ -261,18 +274,24 @@ def close_candidate(repo, task, input_checked=False):
     return {'terminal_id': handle, 'agent': agent, 'screen_fingerprint': fingerprint}
 
 
-def park_close(args, repo, file, tasks, task):
+def park_close(args, repo, file, tasks, task, completed=False):
     if not args.next or not args.validation or not args.processes_checked:
         raise RuntimeError('--close는 --next, --validation, --processes-checked가 필요합니다.')
     if pending(repo):
         raise RuntimeError('생성 결과 미확인: 창을 닫지 않습니다.')
+    from awo_completion import snapshot
+    preserved = snapshot(task['path'], preservation=True)
+    if completed:
+        from awo_completion import validation_current
+        if not validation_current(task, snapshot(task['path'])):
+            raise RuntimeError('종료 직전 검증 증거가 stale입니다. 다시 검증하세요.')
     candidate = close_candidate(repo, task, args.input_checked)
     task['close'] = dict(candidate, state='prepared', at=now(), input_checked=args.input_checked)
     event(task, 'close-prepared')
-    handoff(repo, task, 'park-close')
+    handoff(repo, task, 'finish-close' if completed else 'park-close')
     audit.save(file, tasks)  # no close before durable handoff AND task record
     fresh = close_candidate(repo, task, args.input_checked)
-    if fresh != candidate:
+    if fresh != candidate or snapshot(task['path'], preservation=True) != preserved:
         raise RuntimeError('재검증 중 창/화면이 바뀌었습니다. 닫지 않습니다.')
     task['close']['state'] = 'attempting'
     audit.save(file, tasks)
@@ -280,12 +299,14 @@ def park_close(args, repo, file, tasks, task):
         orca('terminal', 'close', '--terminal', candidate['terminal_id'])
         after = sessions_at(session_snapshot(), task['path'])
         task['close']['state'] = 'closed' if after['state'] == 'absent' else 'unverified'
-        task['state'] = '보관' if after['state'] == 'absent' else '확인필요'
+        task['state'] = '완료' if completed else ('보관' if after['state'] == 'absent' else '확인필요')
     except (RuntimeError, OSError, ValueError, subprocess.SubprocessError):
         task['close']['state'] = 'unverified'
-        task['state'] = '확인필요'
+        task['close']['reason'] = 'close 실패: 종료를 확인하지 못했습니다. 기존 창을 확인하세요.'
+        task['state'] = '완료' if completed else '확인필요'
     event(task, 'close-result', result=task['close']['state'])
-    handoff(repo, task, 'park-close-result')
+    handoff(repo, task, 'finish-close-result' if completed else 'park-close-result')
+    audit.save(file, tasks)
 
 
 def task_command(args):
@@ -297,6 +318,14 @@ def task_command(args):
     if args.action == 'show':
         tasks = read_tasks(repo)
         return select(tasks, args.id) if args.id else tasks
+    if args.action in ('diagnose', 'repair', 'finish') and not getattr(args, 'apply', False):
+        tasks = read_tasks(repo)
+        task = select(tasks, args.id)
+        if args.action == 'finish':
+            from awo_completion import finish_preview
+            return finish_preview(args, repo, task)
+        from awo_repair import diagnose
+        return dict(diagnose(repo, task), mode='PREVIEW')
     if args.action == 'suggest':
         preview = recommend(read_tasks(repo), args.goal, args.current_task, args.intent, args.context)
         if not args.apply:
@@ -362,6 +391,12 @@ def task_command(args):
             update_planning(task, args)
             if planning_requested(args):
                 event(task, 'plan')
+        if args.action == 'repair':
+            from awo_repair import repair
+            return repair(args, repo, file, tasks, task)
+        if args.action == 'finish':
+            from awo_completion import finish
+            return finish(args, repo, file, tasks, task)
         if args.action == 'bind':
             bind(repo, tasks, task, args.worktree)
         if args.action in ('park', 'done'):
@@ -528,7 +563,7 @@ def main():
     b.add_argument('--cleanup', action='store_true', help='기존 audit 안전 판정도 상세 조회 (느릴 수 있음)')
     t = sub.add_parser('task', help='작업 기록과 인계')
     ts = t.add_subparsers(dest='action', required=True)
-    for name in ('add', 'import', 'show', 'bind', 'plan', 'update', 'suggest', 'park', 'start', 'resume', 'done', 'reconcile'):
+    for name in ('add', 'import', 'show', 'bind', 'plan', 'update', 'suggest', 'park', 'start', 'resume', 'done', 'reconcile', 'diagnose', 'repair', 'finish'):
         p = ts.add_parser(name)
         p.add_argument('project')
         if name in ('add', 'import'):
@@ -543,6 +578,24 @@ def main():
             p.add_argument('--apply', action='store_true', help='추천을 재검사한 뒤 아이디어/계획만 저장 (창 생성 없음)')
         else:
             p.add_argument('id', nargs='?' if name == 'show' else None)
+        if name in ('repair', 'finish'):
+            p.add_argument('--apply', action='store_true')
+        if name == 'repair':
+            p.add_argument('--snapshot', help='diagnose/repair preview에서 확인한 snapshot')
+        if name == 'finish':
+            p.add_argument('--validate', action='append', default=[], help='정확한 worktree에서 실행할 shell 명령 (반복 가능)')
+            p.add_argument('--validation', help='사용자 제공 결과; 실제 실행 증거를 대체하지 않음')
+            p.add_argument('--timeout', type=int, default=300)
+            p.add_argument('--file', action='append', default=[], help='커밋할 개별 상대 파일 (반복 가능)')
+            p.add_argument('--message', help='선택 파일 커밋 메시지')
+            p.add_argument('--reconcile-commit', action='store_true', help='중단 커밋의 HEAD/tree/파일을 대조해 결과만 기록; 커밋/종료 없음')
+            p.add_argument('--owner-session', help='현재 변경 소유 확인자의 세션 (선택 기록; 과거 ledger는 소유 증명 아님)')
+            p.add_argument('--ownership-checked', action='store_true', help='ledger는 last observed writer일 뿐: 선택 파일 전체의 소유권을 직접 확인했음')
+            p.add_argument('--close', action='store_true')
+            p.add_argument('--input-checked', action='store_true')
+            p.add_argument('--processes-checked', action='store_true')
+            p.add_argument('--cleanup', action='store_true', help='안전 검사 및 기존 explicit cleanup 명령 안내')
+            p.add_argument('--next')
         if name in ('import', 'bind'):
             p.add_argument('--worktree', required=True)
         if name in ('park', 'done'):

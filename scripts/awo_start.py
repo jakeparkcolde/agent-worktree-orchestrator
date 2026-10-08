@@ -66,7 +66,27 @@ def dispatch(args, locked=False):
         raise RuntimeError('Task name must contain a valid non-hidden name')
     git(primary, 'check-ref-format', '--branch', task)
     from awo_state import project_lock, dispatch_locked
+    def guard_binding():
+        from awo_request import load_tasks, normalize, identity
+        from awo_state import folder
+        goal = (args.goal or '').split('\n인계 자료:')[0]
+        selected = str(Path(args.worktree).expanduser().resolve()) if args.worktree else None
+        for bound in load_tasks(folder(primary) / 'tasks.json'):
+            if not bound.get('path') or not (normalize(bound['goal']) == normalize(goal) or bound['path'] == selected):
+                continue
+            try:
+                branch = validate_worktree(primary, Path(bound['path']))
+                valid = bound['identity'] == identity(bound['path']) and bound['branch'] == 'refs/heads/' + branch
+            except (RuntimeError, OSError, subprocess.SubprocessError):
+                valid = False
+            if not valid:
+                raise RuntimeError('동일 목표/경로의 연결 검증 실패: task diagnose / task repair 필요')
+            if normalize(bound['goal']) == normalize(goal) and bound['path'] != selected:
+                raise RuntimeError('동일 목표는 기존 task ID / 정확한 worktree를 재사용하세요.')
+            if bound['path'] == selected and goal and normalize(bound['goal']) != normalize(goal):
+                raise RuntimeError('다른 목표에 연결된 경로입니다.')
     if locked:
+        guard_binding()
         return dispatch_locked(args, primary, base, agent, task, launch)
     with project_lock(primary):
         from awo_request import load_tasks, task_lock, normalize, identity
@@ -74,6 +94,7 @@ def dispatch(args, locked=False):
         from awo_audit import save
         file = folder(primary) / 'tasks.json'
         with task_lock(file):
+            guard_binding()
             tasks = load_tasks(file)
             matches = [t for t in tasks if args.goal and normalize(t['goal']) == normalize(args.goal)]
             if any(t.get('path') and t['path'] != args.worktree for t in matches):
@@ -81,7 +102,7 @@ def dispatch(args, locked=False):
             for t in tasks:
                 if t.get('path') and t['path'] == args.worktree:
                     if t['identity'] != identity(t['path']) or t['branch'] != 'refs/heads/' + validate_worktree(primary, Path(t['path'])):
-                        raise RuntimeError('기존 작업 identity 변경: 재연결 차단')
+                        raise RuntimeError('기존 작업 identity 변경: task diagnose / task repair 필요')
                     if args.goal and normalize(t['goal']) != normalize(args.goal):
                         raise RuntimeError('기존 경로가 다른 목표에 연결되어 있습니다.')
             result, code = dispatch_locked(args, primary, base, agent, task, launch)

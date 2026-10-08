@@ -113,8 +113,56 @@ release는 기록만 해제한다. 프로세스 kill/DB 변경/출력폴더 생�
 agent none은 worktree-only이며 거점 직접 구현 fallback을 허가하지 않는다.
 
 보관/완료는 정리 허가가 아니다. 기존 `awo cleanup app --worktree PATH` 미리보기와
-명시적인 `--apply`만 정리를 수행한다. 기존 안전 gate가 재검사되고 branch는 보존된다.
-unknown은 안전으로 승격하지 않는다. 자동 삭제/종료/커밋/병합/발행은 없다.
+명시적인 `--apply`만 정리를 수행한다. `task finish --apply --cleanup`도 아래 조건에서
+기존 cleanup 명령을 호출한다. 기존 안전 gate가 재검사되고 branch는 보존된다.
+unknown은 안전으로 승격하지 않는다. 기본 조회로 삭제/종료/커밋/병합/발행하지 않는다.
+
+## 검증 증거를 남기는 마무리와 연결 복구
+
+`task done`은 기존 상태 기록 명령이다. `task finish`는 검증 실행 결과, 커밋,
+통합, 세션 종료, 폴더 정리를 각각 기록한다. 최상위 `awo finish PATH`의 Git 상태
+보고와도 별개다. 기본 호출은 읽기 전용 미리보기다.
+
+```bash
+awo task finish app task-ID
+awo task finish app task-ID --apply --validate 'make test' --validate 'make lint'
+# 현재 변경 소유권과 개별 파일 전체를 확인한 경우에만 명시 커밋:
+awo task finish app task-ID --apply --validate 'make test' \
+  --file src/example.py --file tests/test_example.py \
+  --message 'Fix example' --ownership-checked
+```
+
+검증은 정확한 작업폴더에서 실행되며 명령·HEAD·종료 코드·시간과 파일 내용 증거를
+저장한다. 명령 문자열도 기록하므로 비밀값을 인라인으로 넣지 않는다. 출력은 저장하지
+않는다. `--validation TEXT`는 사용자 제공 참고 결과이며 실행 증거를 대신하지 않는다.
+검증 중 소스 변경이나 실패는 후속 커밋·종료·정리를 차단한다. 무시된 빌드 출력과
+내용이 같은 파일의 mtime 변경은 소스 검증을 무효화하지 않지만, 산출물은 정리를 막는다.
+검증 timeout 뒤에는 남은 자식 프로세스를 확인하고 `--processes-checked`가 필요하다.
+
+커밋은 `--file`로 변경 파일 전체를 개별 지정해야 한다. 선택 밖 변경, 기존 staged 변경,
+숨긴 index flags, 디렉터리·심볼릭 링크 선택은 보존하고 거부한다. `--owner-session`은
+참고 기록이고 과거 ledger 기록은 소유권 증명이 아니다. 중단되어 커밋 결과가 불확실하면
+`--apply --reconcile-commit`으로 HEAD/tree/파일을 대조한 뒤 별도 호출에서 재검증한다.
+대조 호출 자체는 커밋하거나 창을 닫지 않는다.
+
+검증된 깨끗한 작업만 완료로 기록한다. 병합 여부는 로컬 configured base ref와 비교하며
+fetch·merge·push는 수행하지 않는다. `완료·병합대기`, `완료·정리대기`, `완료·정리됨`을
+구분한다. `--close --next TEXT --processes-checked`를 명시한 경우에만 기존 idle·화면·
+draft·자기 세션 보호와 인계 저장/재검증을 거쳐 닫는다. 종료 실패는 완료 결과와 별도로
+미확인 또는 대기로 남긴다. 폴더 정리는 `--cleanup --processes-checked`까지 명시하고
+통합 확인, 세션 부재 및 기존 모든 cleanup 보호를 통과해야 한다.
+기본 작업판은 상세 정리 검사를 하지 않으며 `board --cleanup`은 프로젝트당 한 번 검사한다.
+
+```bash
+awo task diagnose app task-ID
+awo task repair app task-ID                       # 읽기 전용 진단
+awo task repair app task-ID --apply --snapshot TOKEN
+```
+
+복구는 동일 경로·브랜치·Git common-dir·worktree 등록을 확인하고 identity의 device만
+달라진 경우에 한정한다. 진단 토큰을 적용 직전 다시 확인하며 이전/현재 증거와 이벤트를
+남기고 ID를 유지한다. 경로 재생성이나 브랜치 변경은 수동 검토 대상으로 남긴다.
+깨진 연결은 request/start에서 새 목표나 다른 폴더 지정으로 우회하지 않는다.
 
 ## 관련된 독립 주제와 명시적인 창 닫기 (추가 승인 범위)
 

@@ -140,6 +140,12 @@ def decide(args, project, rows, tasks):
         return {'action': 'blocked', 'reason': 'Git operation in progress'}
     active = active_tasks(tasks, rows)
     matches = [t for t in active if normalize(t['goal']) == normalize(args.goal)]
+    requested_path = str(Path(args.worktree).expanduser().resolve()) if args.worktree else None
+    invalid = [t for t in tasks if t.get('path') and t not in active and
+               (normalize(t['goal']) == normalize(args.goal) or t['path'] == requested_path)]
+    if invalid:
+        return {'action': 'blocked', 'reason': '기존 연결 검증 실패: task diagnose / task repair 필요',
+                'task_ids': [t['id'] for t in invalid]}
     if args.worktree:
         path = str(Path(args.worktree).expanduser().resolve())
         selected = [r for r in rows[1:] if r['worktree'] == path]
@@ -221,6 +227,8 @@ def execute(args, key, project, path, rows, file):
             if task is None:
                 task = {}
                 tasks.append(task)
+            if task.get('path') and (task['identity'] != identity(wt) or task['branch'] != row['branch']):
+                raise RuntimeError('연결이 변경됐습니다. task diagnose / task repair 필요')
             task.update(goal=args.goal.strip(), path=wt, branch=row['branch'], identity=identity(wt), project=key)
             if decision['action'] == 'reuse' and args.agent != 'none':
                 launch_args = argparse.Namespace(project=key, task='resume', agent=args.agent,

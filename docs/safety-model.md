@@ -55,6 +55,10 @@ arguments containing prompts, tokens or credentials.
 ## Prohibited automatic operations
 
 No force worktree removal, forced branch deletion, hard reset, recursive clean,
-force push, artifact deletion or session termination. AWO does not enforce
-product review, execute configured validation, or merge PRs; those remain the
-human or supervising workflow's responsibility.
+force push or artifact deletion. Session termination requires explicit lifecycle
+close options and the documented preservation, idle and screen checks.
+`task finish --apply` can execute caller-supplied `--validate` commands and,
+only with the corresponding explicit options, commit selected changes, close a
+verified session or invoke the existing safe cleanup command. Project-configured
+validation is not executed implicitly. Product review and PR merging remain the
+human or supervising workflow's responsibility. See [work lifecycle](work-lifecycle.md).

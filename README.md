@@ -106,6 +106,12 @@ Run your project's tests, lint, and type checks in the task worktree, review the
 
 `finish` reports ahead/behind counts, changed files, filename-based risk candidates, and upstream status. It compares against `origin/HEAD`, falling back to `origin/main`; it currently does not read the project's `base_ref`. Review against your configured base separately if it differs. Follow your merge policy to open a PR or merge.
 
+For a registered task, `awo task finish PROJECT TASK_ID` previews the remaining
+lifecycle steps. Explicit `--apply --validate COMMAND` records executed checks;
+committing selected files, closing a session and cleanup each require their own
+options. `task diagnose` and snapshot-bound `task repair` inspect and repair
+device-only binding drift. See [the lifecycle guide](docs/work-lifecycle.md).
+
 ### 5. Preview cleanup after merging
 
 ```bash

@@ -192,9 +192,15 @@ else:
         first = self.report('--goal', '수정', '--apply')
         self.git('worktree', 'remove', first['path'])
         self.git('worktree', 'add', '-b', 'different', first['path'], 'main')
-        result = self.report('--goal', '수정', '--apply')
-        self.assertEqual(result['action'], 'needs_worktree')
+        file = self.repo / '.git/awo/tasks.json'
+        before = file.read_bytes()
+        calls = self.calls.read_bytes()
+        result = self.report('--goal', '수정', '--apply', success=False)
+        self.assertEqual(result['action'], 'blocked')
+        self.assertIn('repair', result['reason'])
         self.assertEqual(result['known_goals'], [])
+        self.assertEqual(before, file.read_bytes())
+        self.assertEqual(calls, self.calls.read_bytes())
 
     def test_concurrent_request_lock_prevents_creation(self):
         folder = self.repo / '.git/awo'

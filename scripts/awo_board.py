@@ -245,7 +245,7 @@ def render_board(report, details=False, width=80, include_done=False):
             label = row.get('goal') or '목표 미기록'
             if not registered:
                 label = ('거점' if name == '지시 거점' else '미등록 작업') + ' · ' + PurePath(row.get('path') or '').name
-            badges = []
+            badges = [row['lifecycle_label']] if row.get('lifecycle_label') else []
             planning = row.get('planning', {})
             if planning.get('scheduled_for'):
                 badges.append('예정일 ' + planning['scheduled_for'] + ' (KST)')
@@ -280,6 +280,8 @@ def render_board(report, details=False, width=80, include_done=False):
                 next_action = row.get('next') or ('목표 확인 후 task import로 등록' if not registered else '다음 행동 미기록')
                 add('다음: ' + next_action, body_prefix)
             if details:
+                for step in row.get('remaining_steps', []):
+                    add('남은 절차: ' + step, body_prefix)
                 if name == '지시 거점' and row.get('next'):
                     add('다음: ' + row['next'], '    ')
                 add('ID: ' + (row.get('id') or '미등록'), body_prefix)

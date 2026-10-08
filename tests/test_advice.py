@@ -328,6 +328,9 @@ class AdviceRoutingTests(unittest.TestCase):
             return replay(payload)
         self.invoke('--advise', 'jev', response=check)
         # A registered but locked goal must also disappear from suggestions.
+        # Keep the replaced binding intact; adoption must not overwrite it.
+        wt = str(self.root / 'locked-goal')
+        self.git('worktree', 'add', '-b', 'locked-goal', wt, 'main')
         self.report('--goal', '다른 목표', '--worktree', wt, '--apply')
         self.git('worktree', 'lock', wt)
         self.invoke('--advise', 'jev', response=check)
