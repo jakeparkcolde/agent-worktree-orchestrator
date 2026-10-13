@@ -1,0 +1,137 @@
+projects:
+  agents:
+    path: "/Users/koldeumaegmini/agents"
+    aliases: "나의 카카오 비서|카카오 비서|카카오|에이전트|일손"
+    base_ref: "origin/main"
+    max_worktrees: 7
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: ""
+    lint_command: ""
+    typecheck_command: ""
+  post-series:
+    path: "/Users/koldeumaegmini/post-series"
+    aliases: "포스트시리즈|post-series|제이크메이크스|유튜브"
+    base_ref: "origin/main"
+    max_worktrees: 5
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: ""
+    lint_command: ""
+    typecheck_command: ""
+  product-discovery:
+    path: "/Users/koldeumaegmini/product-discovery"
+    aliases: "발견|프로덕트 디스커버리|product-discovery"
+    base_ref: "main"
+    max_worktrees: 3
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: "pnpm test"
+    lint_command: "pnpm lint"
+    typecheck_command: "pnpm typecheck"
+  better-works:
+    path: "/Users/koldeumaegmini/better-works"
+    aliases: "베터웍스|better-works"
+    base_ref: "main"
+    max_worktrees: 3
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: ""
+    lint_command: ""
+    typecheck_command: ""
+  product-content-studio:
+    path: "/Users/koldeumaegmini/product-content-studio"
+    aliases: "콘텐츠 스튜디오|핀 스튜디오|product-content-studio"
+    base_ref: "main"
+    max_worktrees: 3
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: ""
+    lint_command: ""
+    typecheck_command: ""
+  unipass-automation:
+    path: "/Users/koldeumaegmini/unipass-automation"
+    aliases: "유니패스|통관|unipass"
+    base_ref: "main"
+    max_worktrees: 3
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: ""
+    lint_command: ""
+    typecheck_command: ""
+  ai-order-desk:
+    path: "/Users/koldeumaegmini/repos/ai-order-desk"
+    aliases: "주문 데스크|오더 데스크|ai-order-desk"
+    base_ref: "origin/main"
+    max_worktrees: 3
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: "npx vitest run"
+    lint_command: "npm run lint"
+    typecheck_command: "npx tsc --noEmit"
+  21gram-partners:
+    path: "/Users/koldeumaegmini/21gram-partners"
+    aliases: "21그램|21gram"
+    base_ref: "origin/main"
+    max_worktrees: 3
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: "npm test"
+    lint_command: ""
+    typecheck_command: "npm run typecheck"
+  naver-rank-tracker:
+    path: "/Users/koldeumaegmini/N_keyword_rank/naver-rank-tracker-handoff"
+    aliases: "옐로랭크|랭크 트래커|네이버 순위|naver-rank-tracker"
+    base_ref: "origin/main"
+    max_worktrees: 3
+    default_agent: "claude"
+    merge_policy: "manual"
+  notinkorea:
+    path: "/Users/koldeumaegmini/notinkorea"
+    aliases: "낫인코리아|not in korea|notinkorea"
+    base_ref: "origin/main"
+    max_worktrees: 3
+    default_agent: "claude"
+    merge_policy: "manual"
+  sns-marketer:
+    path: "/Users/koldeumaegmini/repos/sns-marketer"
+    aliases: "SNS 마케터|sns 마케터|sns-marketer"
+    base_ref: "origin/main"
+    max_worktrees: 3
+    default_agent: "claude"
+    merge_policy: "manual"
+  gitbap:
+    path: "/Users/koldeumaegmini/gitbap"
+    aliases: "깃밥|gitbap|깃메시"
+    base_ref: "origin/main"
+    max_worktrees: 4
+    default_agent: "claude"
+    merge_policy: "manual"
+  sandmonster:
+    path: "/Users/koldeumaegmini/sandmonster"
+    aliases: "샌드몬스터|샌드 몬스터|sand monster"
+    base_ref: "origin/main"
+    max_worktrees: 3
+    default_agent: "claude"
+    merge_policy: "manual"
+    test_command: "pnpm test"
+    lint_command: "pnpm lint"
+    typecheck_command: "pnpm typecheck"
+  awo:
+    path: "/Users/koldeumaegmini/agent-worktree-orchestrator"
+    aliases: "오케스트레이터|agent-worktree-orchestrator"
+    base_ref: "origin/main"
+    max_worktrees: 4
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: "make test"
+    lint_command: "make lint"
+  academy-operations:
+    path: "/Users/koldeumaegmini/academy-operations"
+    aliases: "수학과통하다|학원 운영|학원 시스템|academy-operations"
+    base_ref: "main"
+    max_worktrees: 3
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: "npm test"
+    typecheck_command: "npm run typecheck"

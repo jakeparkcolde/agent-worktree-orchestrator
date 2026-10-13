@@ -1,0 +1,103 @@
+projects:
+  agents:
+    path: "/Users/koldeumaegmini/agents"
+    base_ref: "origin/main"
+    max_worktrees: 5
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: ""
+    lint_command: ""
+    typecheck_command: ""
+  post-series:
+    path: "/Users/koldeumaegmini/post-series"
+    base_ref: "origin/main"
+    max_worktrees: 4
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: ""
+    lint_command: ""
+    typecheck_command: ""
+  product-discovery:
+    path: "/Users/koldeumaegmini/product-discovery"
+    base_ref: "main"
+    max_worktrees: 3
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: "pnpm test"
+    lint_command: "pnpm lint"
+    typecheck_command: "pnpm typecheck"
+  better-works:
+    path: "/Users/koldeumaegmini/better-works"
+    base_ref: "main"
+    max_worktrees: 3
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: ""
+    lint_command: ""
+    typecheck_command: ""
+  product-content-studio:
+    path: "/Users/koldeumaegmini/product-content-studio"
+    base_ref: "main"
+    max_worktrees: 3
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: ""
+    lint_command: ""
+    typecheck_command: ""
+  unipass-automation:
+    path: "/Users/koldeumaegmini/unipass-automation"
+    base_ref: "main"
+    max_worktrees: 3
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: ""
+    lint_command: ""
+    typecheck_command: ""
+  ai-order-desk:
+    path: "/Users/koldeumaegmini/repos/ai-order-desk"
+    base_ref: "origin/main"
+    max_worktrees: 3
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: "npx vitest run"
+    lint_command: "npm run lint"
+    typecheck_command: "npx tsc --noEmit"
+  21gram-partners:
+    path: "/Users/koldeumaegmini/21gram-partners"
+    base_ref: "origin/main"
+    max_worktrees: 3
+    default_agent: "codex"
+    merge_policy: "manual"
+    test_command: "npm test"
+    lint_command: ""
+    typecheck_command: "npm run typecheck"
+  naver-rank-tracker:
+    path: "/Users/koldeumaegmini/N_keyword_rank/naver-rank-tracker-handoff"
+    base_ref: "origin/main"
+    max_worktrees: 3
+    default_agent: "claude"
+    merge_policy: "manual"
+  notinkorea:
+    path: "/Users/koldeumaegmini/notinkorea"
+    base_ref: "origin/main"
+    max_worktrees: 3
+    default_agent: "claude"
+    merge_policy: "manual"
+  sns-marketer:
+    path: "/Users/koldeumaegmini/repos/sns-marketer"
+    base_ref: "origin/main"
+    max_worktrees: 3
+    default_agent: "claude"
+    merge_policy: "manual"
+  gitbap:
+    path: "/Users/koldeumaegmini/gitbap"
+    base_ref: "origin/main"
+    max_worktrees: 3
+    default_agent: "claude"
+    merge_policy: "manual"
+  sandmonster:
+    path: "/Users/koldeumaegmini/sandmonster"
+    base_ref: "main"
+    max_worktrees: 3
+    default_agent: "claude"
+    merge_policy: "manual"
