@@ -28,6 +28,8 @@ Usage:
   awo guard                        (Claude PreToolUse hook; reads JSON on stdin)
   awo hooks install|uninstall|status [--apply]
   awo shared [--repo NAME=PATH ...] [--json]
+  awo disk check [PATH] [--notify] [--json] [threshold options]
+  awo disk launchd install|uninstall [PATH] [--interval-seconds N] [--apply]
   awo --version
   awo cleanup <project> [--worktree PATH | --all-safe] [--apply] [--json]
   awo help
@@ -65,6 +67,10 @@ case "$cmd" in
   finish)
     shift
     exec "$ROOT/scripts/task-finish.sh" "$@"
+    ;;
+  disk)
+    shift
+    exec python3 "$ROOT/scripts/awo_disk.py" "$@"
     ;;
   sessions)
     shift
